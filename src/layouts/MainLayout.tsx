@@ -87,7 +87,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, onExportData, onImpor
   const drawer = (
     <>
       <Toolbar />
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: -6, mb: 1 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 3, mt: 1, mb: 1 }}>
         <img src={logo} alt="Bellavue Logo" style={{ height: 96, width: 96, borderRadius: '50%', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }} />
       </Box>
       <Box sx={{ overflow: 'auto' }}>
