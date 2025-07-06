@@ -45,7 +45,7 @@ interface CalendarViewProps {
 
 const CalendarView: React.FC<CalendarViewProps> = ({ events, onNewEvent }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');

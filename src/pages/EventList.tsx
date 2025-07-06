@@ -33,6 +33,7 @@ import {
 import type { Event } from '../types';
 import * as XLSX from 'xlsx';
 import EventForm from '../components/EventForm';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../App';
 import { getStatusLabel, getStatusColor } from '../utils';
 
@@ -47,6 +48,10 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [eventFormOpen, setEventFormOpen] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    event: Event | null;
+  }>({ open: false, event: null });
   const navigate = useNavigate();
   const { role } = useAuth();
 
@@ -82,9 +87,18 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
   };
 
   const handleDeleteEvent = (event: Event) => {
-    if (window.confirm(`Möchten Sie das Event "${event.title}" wirklich löschen?`)) {
-      onDelete?.(event);
+    setConfirmDialog({ open: true, event });
+  };
+
+  const handleConfirmDelete = () => {
+    if (confirmDialog.event) {
+      onDelete?.(confirmDialog.event);
     }
+    setConfirmDialog({ open: false, event: null });
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmDialog({ open: false, event: null });
   };
 
   const handleExportExcel = () => {
@@ -304,6 +318,17 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
         open={eventFormOpen}
         onClose={() => setEventFormOpen(false)}
         onSubmit={handleEventFormSubmit}
+      />
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title="Event löschen"
+        message={confirmDialog.event ? `Möchten Sie das Event "${confirmDialog.event.title}" wirklich löschen?` : ''}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        confirmText="Löschen"
+        cancelText="Abbrechen"
+        isDestructive={true}
       />
     </Box>
   );

@@ -33,6 +33,7 @@ import {
   Download as DownloadIcon
 } from '@mui/icons-material';
 import type { Event } from '../types';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 import { getStatusLabel } from '../utils';
@@ -48,6 +49,7 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
   const [isEditing, setIsEditing] = useState(mode === 'edit');
   const [editedEvent, setEditedEvent] = useState<Event>(event);
   const [newComment, setNewComment] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useAuth();
@@ -67,10 +69,17 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
   };
 
   const handleDelete = () => {
-    if (window.confirm(`Möchten Sie das Event "${event.title}" wirklich löschen?`)) {
-      onDelete(event);
-      navigate('/events');
-    }
+    setConfirmDialog(true);
+  };
+
+  const handleConfirmDelete = () => {
+    onDelete(event);
+    navigate('/events');
+    setConfirmDialog(false);
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmDialog(false);
   };
 
   const handleAddComment = () => {
@@ -475,6 +484,17 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
           </Box>
         </Box>
       </Paper>
+
+      <ConfirmDialog
+        open={confirmDialog}
+        title="Event löschen"
+        message={`Möchten Sie das Event "${event.title}" wirklich löschen?`}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        confirmText="Löschen"
+        cancelText="Abbrechen"
+        isDestructive={true}
+      />
     </Box>
   );
 } 

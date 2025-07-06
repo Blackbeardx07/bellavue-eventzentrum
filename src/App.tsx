@@ -13,6 +13,7 @@ import CustomerList from './pages/CustomerList';
 import CustomerDetail from './pages/CustomerDetail';
 import CustomerForm from './components/CustomerForm';
 import EventForm from './components/EventForm';
+import ConfirmDialog from './components/ConfirmDialog';
 import type { Event, Customer } from './types';
 import { eventService, customerService } from './firebase/firestore';
 import './firebase/config'; // Firebase initialisieren
@@ -111,6 +112,10 @@ function App() {
   const [customerFormOpen, setCustomerFormOpen] = useState(false);
   const [pendingEventData, setPendingEventData] = useState<any>(null);
   const [eventFormOpen, setEventFormOpen] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    data: any;
+  }>({ open: false, data: null });
   const [role, setRole] = useState<UserRole>(() => {
     return (localStorage.getItem('bellavue-role') as UserRole) || null;
   });
@@ -166,11 +171,7 @@ function App() {
       try {
         const data = JSON.parse(e.target?.result as string);
         if (data.events && data.customers) {
-          if (window.confirm('Möchten Sie die aktuellen Daten mit den importierten Daten ersetzen?')) {
-            setEvents(data.events);
-            setCustomers(data.customers);
-            alert('Daten erfolgreich importiert!');
-          }
+          setConfirmDialog({ open: true, data });
         } else {
           alert('Ungültiges Dateiformat!');
         }
@@ -180,6 +181,19 @@ function App() {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleConfirmImport = () => {
+    if (confirmDialog.data) {
+      setEvents(confirmDialog.data.events);
+      setCustomers(confirmDialog.data.customers);
+      alert('Daten erfolgreich importiert!');
+    }
+    setConfirmDialog({ open: false, data: null });
+  };
+
+  const handleCancelImport = () => {
+    setConfirmDialog({ open: false, data: null });
   };
 
   const handleEventClick = (event: Event) => {
@@ -441,6 +455,18 @@ function App() {
             onClose={() => setEventFormOpen(false)}
             onSubmit={handleNewEvent}
           />
+
+          {/* Confirm Dialog for Import */}
+          <ConfirmDialog
+            open={confirmDialog.open}
+            title="Daten importieren"
+            message="Möchten Sie die aktuellen Daten mit den importierten Daten ersetzen?"
+            onConfirm={handleConfirmImport}
+            onCancel={handleCancelImport}
+            confirmText="Importieren"
+            cancelText="Abbrechen"
+            isDestructive={false}
+          />
         </ThemeProvider>
       )}
     </AuthContext.Provider>
@@ -464,12 +490,17 @@ const LoginDialog: React.FC = () => {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
-        minWidth: '100vw',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        height: '100dvh',
+        minHeight: '100vh',
         p: 0,
         m: 0,
       }}

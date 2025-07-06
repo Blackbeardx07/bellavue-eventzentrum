@@ -14,6 +14,7 @@ import {
   Save as SaveIcon
 } from '@mui/icons-material';
 import type { Customer, Event } from '../types';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 import { getStatusLabel, getStatusColor } from '../utils';
@@ -37,6 +38,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
 }) => {
   const [isEditing, setIsEditing] = React.useState(mode === 'edit');
   const [editedCustomer, setEditedCustomer] = React.useState<Customer>(customer);
+  const [confirmDialog, setConfirmDialog] = React.useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useAuth();
@@ -59,10 +61,17 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
   };
 
   const handleDelete = () => {
-    if (window.confirm(`Möchten Sie den Kunden "${customer.name}" wirklich löschen?`)) {
-      onDelete(customer);
-      navigate('/customers');
-    }
+    setConfirmDialog(true);
+  };
+
+  const handleConfirmDelete = () => {
+    onDelete(customer);
+    navigate('/customers');
+    setConfirmDialog(false);
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmDialog(false);
   };
 
   const handleEventClick = (event: Event) => {
@@ -317,6 +326,17 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
           )}
         </Box>
       </Paper>
+
+      <ConfirmDialog
+        open={confirmDialog}
+        title="Kunde löschen"
+        message={`Möchten Sie den Kunden "${customer.name}" wirklich löschen?`}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        confirmText="Löschen"
+        cancelText="Abbrechen"
+        isDestructive={true}
+      />
     </Box>
   );
 };

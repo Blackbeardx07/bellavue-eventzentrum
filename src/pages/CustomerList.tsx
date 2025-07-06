@@ -24,6 +24,7 @@ import {
   Delete as DeleteIcon
 } from '@mui/icons-material';
 import type { Customer } from '../types';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../App';
 
 interface CustomerListProps {
@@ -35,6 +36,10 @@ interface CustomerListProps {
 
 const CustomerList: React.FC<CustomerListProps> = ({ customers, onCustomerClick, onNewCustomer, onDelete }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    customer: Customer | null;
+  }>({ open: false, customer: null });
   const navigate = useNavigate();
   const { role } = useAuth();
 
@@ -59,11 +64,18 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onCustomerClick,
   };
 
   const handleDeleteCustomer = (customer: Customer) => {
-    if (window.confirm(`Möchten Sie den Kunden "${customer.name}" wirklich löschen?`)) {
-      if (onDelete) {
-        onDelete(customer);
-      }
+    setConfirmDialog({ open: true, customer });
+  };
+
+  const handleConfirmDelete = () => {
+    if (confirmDialog.customer && onDelete) {
+      onDelete(confirmDialog.customer);
     }
+    setConfirmDialog({ open: false, customer: null });
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmDialog({ open: false, customer: null });
   };
 
   return (
@@ -206,6 +218,17 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onCustomerClick,
           </Table>
         </TableContainer>
       </Box>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title="Kunde löschen"
+        message={confirmDialog.customer ? `Möchten Sie den Kunden "${confirmDialog.customer.name}" wirklich löschen?` : ''}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        confirmText="Löschen"
+        cancelText="Abbrechen"
+        isDestructive={true}
+      />
     </Box>
   );
 };
