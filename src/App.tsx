@@ -482,13 +482,16 @@ const LoginDialog: React.FC = () => {
       <Paper
         elevation={8}
         sx={{
-          padding: 4,
+          p: { xs: 2, sm: 4 },
           borderRadius: 3,
-          minWidth: 400,
+          minWidth: { xs: '90vw', sm: 400 },
           maxWidth: 450,
+          width: '100%',
           textAlign: 'center',
           background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(10px)'
+          backdropFilter: 'blur(10px)',
+          mx: 'auto',
+          boxSizing: 'border-box',
         }}
       >
         {/* Logo */}
@@ -505,15 +508,12 @@ const LoginDialog: React.FC = () => {
             }} 
           />
         </Box>
-        
         <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600, color: '#1976d2' }}>
           Bellavue Eventzentrum
         </Typography>
-        
         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
           Bitte melden Sie sich an
         </Typography>
-        
         <Box component="form" onSubmit={handleLogin} sx={{ mt: 1 }}>
           <TextField
             margin="normal"
@@ -537,13 +537,11 @@ const LoginDialog: React.FC = () => {
             autoComplete="current-password"
             sx={{ mb: 2 }}
           />
-          
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
             </Alert>
           )}
-          
           <Button
             type="submit"
             fullWidth
@@ -558,18 +556,6 @@ const LoginDialog: React.FC = () => {
           >
             Anmelden
           </Button>
-          
-          <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
-              Zugangsdaten:
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              <strong>Admin:</strong> admin / admin123
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              <strong>Mitarbeiter:</strong> user / user123
-            </Typography>
-          </Box>
         </Box>
       </Paper>
     </Box>
