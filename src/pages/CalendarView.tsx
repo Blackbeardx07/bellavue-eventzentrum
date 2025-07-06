@@ -93,7 +93,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onNewEvent }) => {
   };
 
   const getEventColor = (status: string) => {
-    return getStatusColor(status as any);
+    switch (status) {
+      case 'confirmed':
+        return '#4caf50'; // Grün
+      case 'cancelled':
+        return '#f44336'; // Rot
+      case 'planned':
+      default:
+        return '#ff9800'; // Orange
+    }
   };
 
   const handleDateClick = (date: Date) => {

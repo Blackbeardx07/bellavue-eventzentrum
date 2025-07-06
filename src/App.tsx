@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
+import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { de } from 'date-fns/locale';
@@ -15,85 +15,8 @@ import CustomerDetail from './pages/CustomerDetail';
 import CustomerForm from './components/CustomerForm';
 import EventForm from './components/EventForm';
 import type { Event, Customer } from './types';
-
-// Mock data
-const mockEvents: Event[] = [
-  {
-    id: '1',
-    title: 'Hochzeit Müller',
-    date: '2024-01-15',
-    time: '14:00 - 22:00',
-    room: 'Event 1',
-    status: 'confirmed',
-    customerId: '1',
-    customer: 'Familie Müller',
-    description: 'Trauung und Feier',
-    files: ['vertrag_mueller.pdf'],
-    assignedStaff: ['Anna Schmidt'],
-    comments: ['Blumen bestellt']
-  },
-  {
-    id: '2',
-    title: 'Firmenfeier TechCorp',
-    date: '2024-01-20',
-    time: '18:00 - 24:00',
-    room: 'Event 2',
-    status: 'planned',
-    customerId: '2',
-    customer: 'TechCorp GmbH',
-    description: 'Jahresabschlussfeier',
-    files: ['vertrag_techcorp.pdf'],
-    assignedStaff: ['Max Weber'],
-    comments: []
-  },
-  {
-    id: '3',
-    title: 'Geburtstagsfeier Schmidt',
-    date: '2024-06-24',
-    time: '16:00 - 22:00',
-    room: 'Restaurant',
-    status: 'confirmed',
-    customerId: '3',
-    customer: 'Familie Schmidt',
-    description: '50. Geburtstag mit 80 Gästen',
-    files: ['vertrag_schmidt.pdf', 'ablaufplan_schmidt.pdf'],
-    assignedStaff: ['Lisa Meyer', 'Tom Wagner'],
-    comments: ['Catering bestätigt', 'Dekoration geplant']
-  }
-];
-
-const mockCustomers: Customer[] = [
-  {
-    id: '1',
-    name: 'Familie Müller',
-    email: 'mueller@email.com',
-    phone: '+49 123 456789',
-    address: 'Musterstraße 1, 12345 Musterstadt',
-    events: ['1'],
-    tags: ['VIP', 'Stammkunde'],
-    notes: 'Sehr zufriedene Kunden'
-  },
-  {
-    id: '2',
-    name: 'TechCorp GmbH',
-    email: 'events@techcorp.com',
-    phone: '+49 987 654321',
-    address: 'Industriestraße 5, 54321 Techstadt',
-    events: ['2'],
-    tags: ['Firmenkunde'],
-    notes: 'Regelmäßige Buchungen'
-  },
-  {
-    id: '3',
-    name: 'Familie Schmidt',
-    email: 'schmidt@email.com',
-    phone: '+49 555 123456',
-    address: 'Gartenweg 12, 67890 Gartenstadt',
-    events: ['3'],
-    tags: ['Privatkunde', 'Geburtstag'],
-    notes: '50. Geburtstag am 24.06.2024 - 80 Gäste, Catering und Dekoration inklusive. Sehr detaillierte Planung gewünscht.'
-  }
-];
+import { eventService, customerService } from './firebase/firestore';
+import './firebase/config'; // Firebase initialisieren
 
 // CustomerDetail wrapper component to handle routing
 const CustomerDetailWrapper: React.FC<{
@@ -172,7 +95,7 @@ const EventDetailWrapper: React.FC<{
 };
 
 // AuthContext für Login und Rollen
-export type UserRole = 'admin' | 'mitarbeiter' | null;
+export type UserRole = 'admin' | 'user' | null;
 interface AuthContextType {
   role: UserRole;
   login: (username: string, password: string) => boolean;
@@ -182,17 +105,9 @@ const AuthContext = createContext<AuthContextType>({ role: null, login: () => fa
 export const useAuth = () => useContext(AuthContext);
 
 function App() {
-  // Load data from localStorage on component mount
-  const [events, setEvents] = useState<Event[]>(() => {
-    const savedEvents = localStorage.getItem('bellavue-events');
-    return savedEvents ? JSON.parse(savedEvents) : mockEvents;
-  });
-  
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    const savedCustomers = localStorage.getItem('bellavue-customers');
-    return savedCustomers ? JSON.parse(savedCustomers) : mockCustomers;
-  });
-  
+  const [events, setEvents] = useState<Event[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
   const [customerFormOpen, setCustomerFormOpen] = useState(false);
   const [pendingEventData, setPendingEventData] = useState<any>(null);
   const [eventFormOpen, setEventFormOpen] = useState(false);
@@ -200,14 +115,30 @@ function App() {
     return (localStorage.getItem('bellavue-role') as UserRole) || null;
   });
 
-  // Save data to localStorage whenever events or customers change
+  // Firebase Real-time Listeners
   useEffect(() => {
-    localStorage.setItem('bellavue-events', JSON.stringify(events));
-  }, [events]);
+    console.log('Setting up Firebase listeners...');
+    
+    // Events Listener
+    const unsubscribeEvents = eventService.onEventsChange((newEvents) => {
+      console.log('Events updated from Firebase:', newEvents);
+      setEvents(newEvents);
+      setLoading(false);
+    });
 
-  useEffect(() => {
-    localStorage.setItem('bellavue-customers', JSON.stringify(customers));
-  }, [customers]);
+    // Customers Listener
+    const unsubscribeCustomers = customerService.onCustomersChange((newCustomers) => {
+      console.log('Customers updated from Firebase:', newCustomers);
+      setCustomers(newCustomers);
+    });
+
+    // Cleanup listeners on unmount
+    return () => {
+      console.log('Cleaning up Firebase listeners...');
+      unsubscribeEvents();
+      unsubscribeCustomers();
+    };
+  }, []);
 
   // Export data function
   const exportData = () => {
@@ -253,49 +184,23 @@ function App() {
 
   const handleEventClick = (event: Event) => {
     console.log('Event clicked:', event);
-    // Navigate to the event detail page using window.location for better compatibility
-    window.location.href = `/event/${event.id}`;
   };
 
-  const handleNewEvent = (newEvent: Omit<Event, 'id'>, newCustomer: Omit<Customer, 'id'>) => {
-    // Prüfe, ob Kunde existiert (per E-Mail oder Telefon)
-    const existingCustomer = customers.find(c =>
-      (c.email && newCustomer.email && c.email.toLowerCase() === newCustomer.email.toLowerCase()) ||
-      (c.phone && newCustomer.phone && c.phone === newCustomer.phone)
-    );
-
-    let customerId: string;
-    if (existingCustomer) {
-      // Kunde aktualisieren
-      const updatedCustomer: Customer = {
-        ...existingCustomer,
-        ...newCustomer,
-        id: existingCustomer.id,
-        events: [...(existingCustomer.events || []), Date.now().toString()]
-      };
-      setCustomers(prev => prev.map(c => c.id === existingCustomer.id ? updatedCustomer : c));
-      customerId = existingCustomer.id;
-    } else {
-      // Neuen Kunden anlegen
-      customerId = Date.now().toString();
-      const customerWithId: Customer = {
-        ...newCustomer,
-        id: customerId,
-        events: [Date.now().toString()]
-      };
-      setCustomers(prev => [...prev, customerWithId]);
+  const handleNewEvent = async (newEvent: Omit<Event, 'id'>, newCustomer: any) => {
+    try {
+      // Event erstellen
+      const eventId = await eventService.createEvent(newEvent);
+      
+      // Wenn ein neuer Kunde erstellt wurde
+      if (newCustomer && newCustomer.name) {
+        const customerId = await customerService.createCustomer(newCustomer);
+        console.log('Neuer Kunde erstellt:', customerId);
+      }
+      
+      console.log('Event erstellt:', eventId);
+    } catch (error) {
+      console.error('Fehler beim Erstellen des Events:', error);
     }
-
-    // Event anlegen und mit Kunde verknüpfen
-    const eventWithId: Event = {
-      ...newEvent,
-      id: Date.now().toString(),
-      customerId: customerId,
-      status: 'confirmed' as const
-    };
-    setEvents(prev => [...prev, eventWithId]);
-
-    alert('Event und Kunde erfolgreich erstellt!');
   };
 
   const handleCustomerFormSubmit = (newCustomer: Omit<Customer, 'id'>) => {
@@ -335,38 +240,43 @@ function App() {
   };
 
   const handleCustomerClick = (customer: Customer) => {
-    // In a real app, this would navigate to the customer detail page
     console.log('Customer clicked:', customer);
   };
 
-  const handleEventSave = (event: Event) => {
-    console.log('Save event:', event);
-    // Update the event in the state
-    setEvents(prev => prev.map(e => e.id === event.id ? event : e));
-    alert('Event erfolgreich gespeichert!');
+  const handleEventSave = async (event: Event) => {
+    try {
+      await eventService.updateEvent(event.id, event);
+      console.log('Event aktualisiert:', event.id);
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren des Events:', error);
+    }
   };
 
-  const handleEventDelete = (event: Event) => {
-    console.log('Delete event:', event.id);
-    // Remove the event from the state
-    setEvents(prev => prev.filter(e => e.id !== event.id));
-    alert('Event erfolgreich gelöscht!');
+  const handleEventDelete = async (event: Event) => {
+    try {
+      await eventService.deleteEvent(event.id);
+      console.log('Event gelöscht:', event.id);
+    } catch (error) {
+      console.error('Fehler beim Löschen des Events:', error);
+    }
   };
 
-  const handleCustomerSave = (customer: Customer) => {
-    console.log('Save customer:', customer);
-    // Update the customer in the state
-    setCustomers(prev => prev.map(c => c.id === customer.id ? customer : c));
-    alert('Kunde erfolgreich gespeichert!');
+  const handleCustomerSave = async (customer: Customer) => {
+    try {
+      await customerService.updateCustomer(customer.id, customer);
+      console.log('Kunde aktualisiert:', customer.id);
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren des Kunden:', error);
+    }
   };
 
-  const handleCustomerDelete = (customer: Customer) => {
-    console.log('Delete customer:', customer.id);
-    // Remove the customer from the state
-    setCustomers(prev => prev.filter(c => c.id !== customer.id));
-    // Also remove associated events
-    setEvents(prev => prev.filter(e => e.customerId !== customer.id));
-    alert('Kunde erfolgreich gelöscht!');
+  const handleCustomerDelete = async (customer: Customer) => {
+    try {
+      await customerService.deleteCustomer(customer.id);
+      console.log('Kunde gelöscht:', customer.id);
+    } catch (error) {
+      console.error('Fehler beim Löschen des Kunden:', error);
+    }
   };
 
   const login = (username: string, password: string) => {
@@ -375,9 +285,9 @@ function App() {
       localStorage.setItem('bellavue-role', 'admin');
       return true;
     }
-    if (username === 'mitarbeiter' && password === 'mitarbeiter123') {
-      setRole('mitarbeiter');
-      localStorage.setItem('bellavue-role', 'mitarbeiter');
+    if (username === 'user' && password === 'user123') {
+      setRole('user');
+      localStorage.setItem('bellavue-role', 'user');
       return true;
     }
     return false;
@@ -657,7 +567,7 @@ const LoginDialog: React.FC = () => {
               <strong>Admin:</strong> admin / admin123
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              <strong>Mitarbeiter:</strong> mitarbeiter / mitarbeiter123
+              <strong>Mitarbeiter:</strong> user / user123
             </Typography>
           </Box>
         </Box>
