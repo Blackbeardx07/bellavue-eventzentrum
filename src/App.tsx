@@ -280,12 +280,12 @@ function App() {
   };
 
   const login = (username: string, password: string) => {
-    if (username === 'admin' && password === 'admin123') {
+    if (username === 'Admin' && password === 'BellavueNokta2025#') {
       setRole('admin');
       localStorage.setItem('bellavue-role', 'admin');
       return true;
     }
-    if (username === 'user' && password === 'user123') {
+    if ((username === 'Mitarbeiter') && password === 'BellavueMitarbeiter2025#') {
       setRole('user');
       localStorage.setItem('bellavue-role', 'user');
       return true;
@@ -464,19 +464,14 @@ const LoginDialog: React.FC = () => {
   return (
     <Box
       sx={{
+        minHeight: '100vh',
+        minWidth: '100vw',
         display: 'flex',
-        height: '100vh',
-        width: '100vw',
         alignItems: 'center',
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-        padding: 2,
-        margin: 0,
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0
+        p: 0,
+        m: 0,
       }}
     >
       <Paper
