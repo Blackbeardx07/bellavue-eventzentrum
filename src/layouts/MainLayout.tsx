@@ -153,7 +153,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, onExportData, onImpor
               mr: { xs: 1, sm: 2 },
               fontSize: { xs: '0.75rem', sm: '0.875rem' }
             }}>
-              {role === 'admin' ? 'Admin' : role === 'mitarbeiter' ? 'Mitarbeiter' : ''}
+              {role === 'admin' ? 'Admin' : role === 'user' ? 'Mitarbeiter' : ''}
             </Typography>
             <Button 
               color="inherit" 

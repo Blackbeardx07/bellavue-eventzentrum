@@ -1,11 +1,10 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { de } from 'date-fns/locale';
-import { CssBaseline, Box, Typography, Button, Paper, TextField, Alert } from '@mui/material';
-import theme from './theme';
+import { Box, Button, Typography, Paper, TextField, Alert, CssBaseline } from '@mui/material';
 import MainLayout from './layouts/MainLayout';
 import CalendarView from './pages/CalendarView';
 import EventList from './pages/EventList';
@@ -17,6 +16,7 @@ import EventForm from './components/EventForm';
 import type { Event, Customer } from './types';
 import { eventService, customerService } from './firebase/firestore';
 import './firebase/config'; // Firebase initialisieren
+import theme from './theme';
 
 // CustomerDetail wrapper component to handle routing
 const CustomerDetailWrapper: React.FC<{
@@ -107,7 +107,7 @@ export const useAuth = () => useContext(AuthContext);
 function App() {
   const [events, setEvents] = useState<Event[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
+
   const [customerFormOpen, setCustomerFormOpen] = useState(false);
   const [pendingEventData, setPendingEventData] = useState<any>(null);
   const [eventFormOpen, setEventFormOpen] = useState(false);
@@ -123,7 +123,7 @@ function App() {
     const unsubscribeEvents = eventService.onEventsChange((newEvents) => {
       console.log('Events updated from Firebase:', newEvents);
       setEvents(newEvents);
-      setLoading(false);
+
     });
 
     // Customers Listener
