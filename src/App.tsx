@@ -482,16 +482,16 @@ const LoginDialog: React.FC = () => {
       <Paper
         elevation={8}
         sx={{
-          p: { xs: 2, sm: 4 },
+          p: { xs: 1.5, sm: 4 },
           borderRadius: 3,
-          minWidth: { xs: '90vw', sm: 400 },
-          maxWidth: 450,
+          maxWidth: 360,
           width: '100%',
           textAlign: 'center',
           background: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(10px)',
           mx: 'auto',
           boxSizing: 'border-box',
+          overflowX: 'hidden',
         }}
       >
         {/* Logo */}
