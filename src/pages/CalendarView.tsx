@@ -60,6 +60,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onNewEvent }) => {
 
   const dayNames = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
+  // Generate years for dropdown (current year ± 10 years)
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
+
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -124,6 +128,22 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onNewEvent }) => {
       } else {
         newDate.setMonth(newDate.getMonth() + 1);
       }
+      return newDate;
+    });
+  };
+
+  const handleMonthSelect = (monthIndex: number) => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(monthIndex);
+      return newDate;
+    });
+  };
+
+  const handleYearSelect = (year: number) => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setFullYear(year);
       return newDate;
     });
   };
@@ -215,23 +235,84 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onNewEvent }) => {
         >
           <Paper sx={{ p: { xs: 1, sm: 2 }, mb: { xs: 3, md: 0 } }}>
             {/* Calendar Navigation */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <IconButton onClick={() => handleMonthChange('prev')} size="small">
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              mb: 2,
+              flexWrap: 'wrap',
+              gap: 1
+            }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                flexWrap: 'wrap'
+              }}>
+                <IconButton 
+                  onClick={() => handleMonthChange('prev')} 
+                  size="small"
+                  sx={{ display: { xs: 'flex', sm: 'flex' } }}
+                >
                   <ChevronLeftIcon />
                 </IconButton>
-                <Typography variant="h6" sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
-                  {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-                </Typography>
-                <IconButton onClick={() => handleMonthChange('next')} size="small">
+                
+                {/* Month Dropdown */}
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <Select
+                    value={currentDate.getMonth()}
+                    onChange={(e) => handleMonthSelect(e.target.value as number)}
+                    displayEmpty
+                    sx={{ 
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      '& .MuiSelect-select': { py: 0.5 }
+                    }}
+                  >
+                    {monthNames.map((month, index) => (
+                      <MenuItem key={month} value={index} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                        {month}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {/* Year Dropdown */}
+                <FormControl size="small" sx={{ minWidth: 100 }}>
+                  <Select
+                    value={currentDate.getFullYear()}
+                    onChange={(e) => handleYearSelect(e.target.value as number)}
+                    displayEmpty
+                    sx={{ 
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      '& .MuiSelect-select': { py: 0.5 }
+                    }}
+                  >
+                    {years.map((year) => (
+                      <MenuItem key={year} value={year} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                        {year}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <IconButton 
+                  onClick={() => handleMonthChange('next')} 
+                  size="small"
+                  sx={{ display: { xs: 'flex', sm: 'flex' } }}
+                >
                   <ChevronRightIcon />
                 </IconButton>
               </Box>
+              
               <Button
                 startIcon={<TodayIcon />}
                 onClick={goToToday}
                 size="small"
-                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                sx={{ 
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  minWidth: 'auto',
+                  px: { xs: 1, sm: 1.5 }
+                }}
               >
                 Heute
               </Button>
