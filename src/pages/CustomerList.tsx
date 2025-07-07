@@ -21,9 +21,11 @@ import {
   Add as AddIcon, 
   Edit as EditIcon,
   Visibility as ViewIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  Download as DownloadIcon
 } from '@mui/icons-material';
 import type { Customer } from '../types';
+import * as XLSX from 'xlsx';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../App';
 
@@ -78,18 +80,44 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onCustomerClick,
     setConfirmDialog({ open: false, customer: null });
   };
 
+  const handleExportExcel = () => {
+    const data = filteredCustomers.map(({ id, name, email, phone, address, notes }) => ({
+      ID: id,
+      Name: name,
+      Email: email,
+      Telefon: phone,
+      Adresse: address,
+      Notizen: notes || ''
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Kunden');
+    XLSX.writeFile(workbook, 'kundenliste.xlsx');
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Search Bar */}
       <Box sx={{ mb: 3 }}>
-        <TextField
-          fullWidth
-          label="Kunden durchsuchen"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          size="small"
-          sx={{ maxWidth: { sm: 400 } }}
-        />
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
+          <TextField
+            fullWidth
+            label="Kunden durchsuchen"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            size="small"
+            sx={{ flex: { md: 2 } }}
+          />
+          <Button
+            variant="outlined"
+            onClick={handleExportExcel}
+            startIcon={<DownloadIcon />}
+            size="small"
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Excel
+          </Button>
+        </Box>
       </Box>
 
       {/* Customer Count */}

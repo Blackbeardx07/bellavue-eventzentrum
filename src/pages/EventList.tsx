@@ -46,7 +46,8 @@ interface EventListProps {
 const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [dateFromFilter, setDateFromFilter] = useState<string>('');
+  const [dateToFilter, setDateToFilter] = useState<string>('');
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
@@ -56,7 +57,6 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
   const { role } = useAuth();
 
   const allStatuses = Array.from(new Set(events.map(event => event.status)));
-  const allDates = Array.from(new Set(events.map(event => event.date))).sort();
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = 
@@ -64,8 +64,23 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
       event.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.room.toLowerCase().includes(searchQuery.toLowerCase());
+    
     const matchesStatus = statusFilter === 'all' || event.status === statusFilter;
-    const matchesDate = dateFilter === 'all' || event.date === dateFilter;
+    
+    // Date range filtering
+    const eventDate = new Date(event.date);
+    const fromDate = dateFromFilter ? new Date(dateFromFilter) : null;
+    const toDate = dateToFilter ? new Date(dateToFilter) : null;
+    
+    let matchesDate = true;
+    if (fromDate && toDate) {
+      matchesDate = eventDate >= fromDate && eventDate <= toDate;
+    } else if (fromDate) {
+      matchesDate = eventDate >= fromDate;
+    } else if (toDate) {
+      matchesDate = eventDate <= toDate;
+    }
+    
     return matchesSearch && matchesStatus && matchesDate;
   });
 
@@ -123,6 +138,11 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
     setEventFormOpen(false);
   };
 
+  const clearDateFilters = () => {
+    setDateFromFilter('');
+    setDateToFilter('');
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Search and Filters */}
@@ -152,21 +172,6 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
                 ))}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: { md: 150 } }}>
-              <InputLabel>Datum</InputLabel>
-              <Select
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                label="Datum"
-              >
-                <MenuItem value="all">Alle</MenuItem>
-                {allDates.map((date) => (
-                  <MenuItem key={date} value={date}>
-                    {formatDate(date)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
             <Button
               variant="outlined"
               onClick={handleExportExcel}
@@ -176,6 +181,60 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
             >
               Excel
             </Button>
+          </Box>
+          
+          {/* Date Range Filter */}
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', md: 'row' }, 
+            gap: 2,
+            alignItems: { xs: 'stretch', md: 'center' }
+          }}>
+            <Typography variant="body2" sx={{ 
+              fontWeight: 'medium',
+              color: 'text.secondary',
+              minWidth: { md: 80 }
+            }}>
+              Datumsbereich:
+            </Typography>
+            <TextField
+              type="date"
+              label="Von"
+              value={dateFromFilter}
+              onChange={(e) => setDateFromFilter(e.target.value)}
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: { md: 150 } }}
+            />
+            <Typography variant="body2" sx={{ 
+              color: 'text.secondary',
+              alignSelf: 'center'
+            }}>
+              bis
+            </Typography>
+            <TextField
+              type="date"
+              label="Bis"
+              value={dateToFilter}
+              onChange={(e) => setDateToFilter(e.target.value)}
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: { md: 150 } }}
+            />
+            {(dateFromFilter || dateToFilter) && (
+              <Button
+                variant="text"
+                onClick={clearDateFilters}
+                size="small"
+                sx={{ 
+                  whiteSpace: 'nowrap',
+                  minWidth: 'auto',
+                  px: 1
+                }}
+              >
+                Zurücksetzen
+              </Button>
+            )}
           </Box>
         </Stack>
       </Box>
