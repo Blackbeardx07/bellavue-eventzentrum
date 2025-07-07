@@ -559,15 +559,6 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
           Event erstellen
         </Button>
       </DialogActions>
-      {/* Debug-Info */}
-      <Box sx={{ p: 2, bgcolor: 'grey.100', fontSize: '12px' }}>
-        <Typography variant="caption">
-          Debug: Title: "{formData.title}" ({formData.title ? '✓' : '✗'}) | 
-          FirstName: "{formData.firstName}" ({formData.firstName ? '✓' : '✗'}) | 
-          LastName: "{formData.lastName}" ({formData.lastName ? '✓' : '✗'}) | 
-          EventTypes: [{formData.eventTypes.join(', ')}] ({formData.eventTypes.length > 0 ? '✓' : '✗'})
-        </Typography>
-      </Box>
     </Dialog>
   );
 };
