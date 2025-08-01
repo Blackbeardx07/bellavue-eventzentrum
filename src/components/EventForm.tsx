@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -6,31 +6,16 @@ import {
   DialogActions,
   TextField,
   Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   FormControlLabel,
   Checkbox,
   FormGroup,
   Box,
   Typography,
-  Chip,
-  OutlinedInput,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction
+  Divider,
+  Alert
 } from '@mui/material';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { 
-  CloudUpload as UploadIcon, 
-  Delete as DeleteIcon,
-  Description as FileIcon
-} from '@mui/icons-material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import type { Event, Customer } from '../types';
-import type { SelectChangeEvent } from '@mui/material';
 
 interface EventFormProps {
   open: boolean;
@@ -39,510 +24,719 @@ interface EventFormProps {
   initialDate?: Date;
 }
 
-interface UploadedFile {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  file: File;
-}
-
 const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialDate }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
-    title: '',
-    date: initialDate || new Date(),
-    time: '',
-    status: 'planned' as const,
-    customerId: '',
-    firstName: '',
-    lastName: '',
-    customer: '',
-    description: '',
-    eventTypes: [] as string[],
-    guestCount: '',
-    kosten: '',
-    contactPerson: '',
-    contactPhone: '',
-    contactEmail: '',
-    specialRequirements: '',
-    notes: '',
-    address: '',
-    company: '',
-    website: '',
-    birthday: '',
-    anniversary: '',
-    vatNumber: '',
-    tags: '',
-    catering: false,
-    decoration: false,
-    music: false,
-    photography: false
+    // Allgemeine Informationen
+    customerName: '',
+    personCount: '',
+    eventType: '',
+    eventsaal1: false,
+    eventsaal2: false,
+    eventDate: initialDate || new Date(),
+    weekday: '',
+    
+    // Leistungen
+    rundeTische: false,
+    eckigeTische: false,
+    haehnchengeschnetzeltes: false,
+    rindergulasch: false,
+    reisGemuese: false,
+    salat: false,
+    halbesHaehnchen: false,
+    vorspeisenBrot: false,
+    obstteller: false,
+    nachtisch: false,
+    teeKaffee: false,
+    softgetraenke: false,
+    hochzeitstorte: false,
+    kabernebeer: false,
+    
+    // Allgemeiner Service
+    band: false,
+    dj: false,
+    kameraKranOhne: false,
+    kameraKranMit: false,
+    davulZurnaOhne: false,
+    davulZurnaMit: false,
+    saalDekoration: false,
+    feuerwerkBodennebel: false,
+    
+    // Kostenübersicht
+    mietzahlung: '',
+    servicezahlung: '',
+    gesamtzahlung: '',
+    anzahlung: '',
+    restzahlung: '',
+    
+    // Extras
+    goldEingangsfeuerwerk: false,
+    helikopterlandung: false,
+    feuerwerkEingang: false,
+    dekorVintage: false,
+    dekorPlatin: false,
+    obstKuchenbuffet: false,
+    mezeBuffet: false,
+    cigkoefte: false,
+    vegetarischesBuffet: false,
+    suppeHauptgang: false,
+    cocktailEmpfang: false,
+    
+    // Unterschrift
+    signature: ''
   });
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-
-  const eventTypeOptions = ['Event 1', 'Event 2', 'Restaurant'];
-
-  const handleEventTypesChange = (event: SelectChangeEvent<string[]>) => {
-    const value = event.target.value;
-    setFormData(prev => ({
-      ...prev,
-      eventTypes: typeof value === 'string' ? value.split(',') : value
-    }));
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      const newFiles: UploadedFile[] = Array.from(files).map(file => ({
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        file: file
-      }));
-      setUploadedFiles(prev => [...prev, ...newFiles]);
-    }
-    // Reset input value to allow uploading the same file again
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleFileDelete = (fileId: string) => {
-    setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
   const handleSubmit = () => {
     // Event-Objekt
     const newEvent: Omit<Event, 'id'> = {
-      title: formData.title,
-      date: formData.date.toISOString().split('T')[0],
-      time: formData.time,
-      room: formData.eventTypes.join(', '), // Verwende eventTypes als room
-      status: formData.status,
-      customerId: '', // Wird später gesetzt
-      customer: `${formData.firstName} ${formData.lastName}`.trim(),
-      description: formData.description,
-      files: uploadedFiles.map(file => file.name),
+      title: `${formData.customerName} - ${formData.eventType}`,
+      date: formData.eventDate.toISOString().split('T')[0],
+      time: '16:00-24:00',
+      room: `${formData.eventsaal1 ? 'Eventsaal 1' : ''}${formData.eventsaal1 && formData.eventsaal2 ? ', ' : ''}${formData.eventsaal2 ? 'Eventsaal 2' : ''}`,
+      status: 'planned',
+      customerId: '',
+      customer: formData.customerName,
+      description: `Veranstaltungsart: ${formData.eventType}\nAnzahl Personen: ${formData.personCount}\nWochentag: ${formData.weekday}`,
+      files: [],
       assignedStaff: [],
       comments: [],
-      guestCount: formData.guestCount,
-      kosten: formData.kosten,
-      specialRequirements: formData.specialRequirements,
-      notes: formData.notes,
-      eventTypes: formData.eventTypes,
+      guestCount: formData.personCount,
+      kosten: formData.gesamtzahlung,
+      specialRequirements: '',
+      notes: '',
+      eventTypes: [formData.eventType],
       preferences: {
-        catering: formData.catering,
-        decoration: formData.decoration,
-        music: formData.music,
-        photography: formData.photography
+        catering: true,
+        decoration: formData.saalDekoration,
+        music: formData.band || formData.dj,
+        photography: formData.kameraKranOhne || formData.kameraKranMit
       }
     };
+
     // Customer-Objekt
     const newCustomer: Omit<Customer, 'id'> = {
-      name: `${formData.firstName} ${formData.lastName}`.trim(),
-      email: formData.contactEmail,
-      phone: formData.contactPhone,
-      address: formData.address,
+      name: formData.customerName,
+      email: '',
+      phone: '',
+      address: '',
       events: [],
-      tags: formData.tags ? formData.tags.split(',').map((t: string) => t.trim()) : [],
-      notes: formData.notes,
-      contactPerson: formData.contactPerson,
-      company: formData.company,
-      website: formData.website,
-      vatNumber: formData.vatNumber,
-      birthday: formData.birthday,
-      anniversary: formData.anniversary,
-      budget: formData.kosten,
-      guestCount: formData.guestCount,
-      specialRequirements: formData.specialRequirements,
+      tags: [],
+      notes: `Veranstaltungsart: ${formData.eventType}\nAnzahl Personen: ${formData.personCount}`,
+      contactPerson: '',
+      company: '',
+      website: '',
+      vatNumber: '',
+      birthday: '',
+      anniversary: '',
+      budget: formData.gesamtzahlung,
+      guestCount: formData.personCount,
+      specialRequirements: '',
       preferences: {
-        catering: formData.catering,
-        decoration: formData.decoration,
-        music: formData.music,
-        photography: formData.photography
+        catering: true,
+        decoration: formData.saalDekoration,
+        music: formData.band || formData.dj,
+        photography: formData.kameraKranOhne || formData.kameraKranMit
       }
     };
+
     onSubmit(newEvent, newCustomer);
     onClose();
   };
 
   const handleClose = () => {
     setFormData({
-      title: '',
-      date: initialDate || new Date(),
-      time: '',
-      status: 'planned',
-      customerId: '',
-      firstName: '',
-      lastName: '',
-      customer: '',
-      description: '',
-      eventTypes: [],
-      guestCount: '',
-      kosten: '',
-      contactPerson: '',
-      contactPhone: '',
-      contactEmail: '',
-      specialRequirements: '',
-      notes: '',
-      address: '',
-      company: '',
-      website: '',
-      birthday: '',
-      anniversary: '',
-      vatNumber: '',
-      tags: '',
-      catering: false,
-      decoration: false,
-      music: false,
-      photography: false
+      customerName: '',
+      personCount: '',
+      eventType: '',
+      eventsaal1: false,
+      eventsaal2: false,
+      eventDate: initialDate || new Date(),
+      weekday: '',
+      rundeTische: false,
+      eckigeTische: false,
+      haehnchengeschnetzeltes: false,
+      rindergulasch: false,
+      reisGemuese: false,
+      salat: false,
+      halbesHaehnchen: false,
+      vorspeisenBrot: false,
+      obstteller: false,
+      nachtisch: false,
+      teeKaffee: false,
+      softgetraenke: false,
+      hochzeitstorte: false,
+      kabernebeer: false,
+      band: false,
+      dj: false,
+      kameraKranOhne: false,
+      kameraKranMit: false,
+      davulZurnaOhne: false,
+      davulZurnaMit: false,
+      saalDekoration: false,
+      feuerwerkBodennebel: false,
+      mietzahlung: '',
+      servicezahlung: '',
+      gesamtzahlung: '',
+      anzahlung: '',
+      restzahlung: '',
+      goldEingangsfeuerwerk: false,
+      helikopterlandung: false,
+      feuerwerkEingang: false,
+      dekorVintage: false,
+      dekorPlatin: false,
+      obstKuchenbuffet: false,
+      mezeBuffet: false,
+      cigkoefte: false,
+      vegetarischesBuffet: false,
+      suppeHauptgang: false,
+      cocktailEmpfang: false,
+      signature: ''
     });
-    setUploadedFiles([]);
     onClose();
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle>Neues Event erstellen</DialogTitle>
+    <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
+      <DialogTitle>Veranstaltungs-Service - Neues Event</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
-          {/* Basic Information */}
-          <Typography variant="h6" gutterBottom>
-            Grundinformationen
+          
+          {/* Allgemeine Informationen */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 2 }}>
+            Allgemeine Informationen
           </Typography>
           
           <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
             <Box sx={{ flex: 1, minWidth: 250 }}>
               <TextField
                 fullWidth
-                label="Event-Titel"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                label="Name Kunde"
+                value={formData.customerName}
+                onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
                 required
               />
             </Box>
-
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <FormControl fullWidth>
-                <InputLabel>Ort</InputLabel>
-                <Select
-                  multiple
-                  value={formData.eventTypes}
-                  onChange={handleEventTypesChange}
-                  input={<OutlinedInput label="Ort" />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map((value) => (
-                        <Chip key={value} label={value} size="small" />
-                      ))}
-                    </Box>
-                  )}
-                >
-                  {eventTypeOptions.map((option) => (
-                    <MenuItem key={option} value={option}>
-                      {option}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <DateTimePicker
-                label="Datum & Uhrzeit"
-                value={formData.date}
-                onChange={(newValue) => setFormData(prev => ({ ...prev, date: newValue || new Date() }))}
-                slotProps={{ textField: { fullWidth: true } }}
-              />
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
             <Box sx={{ flex: 1, minWidth: 250 }}>
               <TextField
                 fullWidth
-                label="Anzahl Gäste"
+                label="Anzahl Personen"
                 type="number"
-                value={formData.guestCount}
-                onChange={(e) => setFormData(prev => ({ ...prev, guestCount: e.target.value }))}
+                value={formData.personCount}
+                onChange={(e) => setFormData(prev => ({ ...prev, personCount: e.target.value }))}
+                required
               />
             </Box>
-
             <Box sx={{ flex: 1, minWidth: 250 }}>
               <TextField
                 fullWidth
-                label="Kosten (€)"
-                type="number"
-                value={formData.kosten}
-                onChange={(e) => setFormData(prev => ({ ...prev, kosten: e.target.value }))}
+                label="Veranstaltungsart"
+                value={formData.eventType}
+                onChange={(e) => setFormData(prev => ({ ...prev, eventType: e.target.value }))}
+                required
+              />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 250 }}>
+              <TextField
+                fullWidth
+                label="Wochentag"
+                value={formData.weekday}
+                onChange={(e) => setFormData(prev => ({ ...prev, weekday: e.target.value }))}
               />
             </Box>
           </Box>
 
-          {/* Kunden-Präferenzen */}
-          <Typography variant="subtitle1" gutterBottom>
-            Kunden-Präferenzen
-          </Typography>
           <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Eventsaal (Checkbox-Auswahl):
+            </Typography>
             <FormGroup row>
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={formData.catering}
-                    onChange={(e) => setFormData(prev => ({ ...prev, catering: e.target.checked }))}
+                    checked={formData.eventsaal1}
+                    onChange={(e) => setFormData(prev => ({ ...prev, eventsaal1: e.target.checked }))}
                   />
                 }
-                label="Catering"
+                label="Eventsaal 1"
               />
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={formData.decoration}
-                    onChange={(e) => setFormData(prev => ({ ...prev, decoration: e.target.checked }))}
+                    checked={formData.eventsaal2}
+                    onChange={(e) => setFormData(prev => ({ ...prev, eventsaal2: e.target.checked }))}
                   />
                 }
-                label="Dekoration"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={formData.music}
-                    onChange={(e) => setFormData(prev => ({ ...prev, music: e.target.checked }))}
-                  />
-                }
-                label="Musik"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={formData.photography}
-                    onChange={(e) => setFormData(prev => ({ ...prev, photography: e.target.checked }))}
-                  />
-                }
-                label="Fotografie"
+                label="Eventsaal 2"
               />
             </FormGroup>
           </Box>
 
-          {/* Customer Information */}
-          <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-            Kundeninformationen
-          </Typography>
-
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Vorname"
-                value={formData.firstName}
-                onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                required
-              />
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Nachname"
-                value={formData.lastName}
-                onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                required
-              />
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Ansprechpartner"
-                value={formData.contactPerson}
-                onChange={(e) => setFormData(prev => ({ ...prev, contactPerson: e.target.value }))}
-              />
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Telefon"
-                value={formData.contactPhone}
-                onChange={(e) => setFormData(prev => ({ ...prev, contactPhone: e.target.value }))}
-              />
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="E-Mail"
-                type="email"
-                value={formData.contactEmail}
-                onChange={(e) => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
-              />
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Adresse"
-                value={formData.address || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-              />
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Firma"
-                value={formData.company || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
-              />
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Website"
-                value={formData.website || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-              />
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Geburtstag"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={formData.birthday || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, birthday: e.target.value }))}
-              />
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="USt-IdNr."
-                value={formData.vatNumber || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, vatNumber: e.target.value }))}
-              />
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Jahrestag"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={formData.anniversary || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, anniversary: e.target.value }))}
-              />
-            </Box>
-          </Box>
-
-          {/* Kunden-Tags */}
           <Box sx={{ mb: 3 }}>
-            <TextField
-              fullWidth
-              label="Tags (Komma-getrennt, z.B. VIP, Stammkunde)"
-              value={formData.tags || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
-              helperText="Mehrere Tags mit Komma trennen."
+            <DatePicker
+              label="Veranstaltungsdatum"
+              value={formData.eventDate}
+              onChange={(newValue) => setFormData(prev => ({ ...prev, eventDate: newValue || new Date() }))}
+              slotProps={{ textField: { fullWidth: true } }}
             />
           </Box>
 
-          {/* File Upload */}
-          <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-            Dateien hochladen
-          </Typography>
+          <Divider sx={{ my: 3 }} />
 
-          <Box sx={{ mb: 3 }}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"
-              onChange={handleFileUpload}
-              style={{ display: 'none' }}
-            />
-            <Button
-              variant="outlined"
-              startIcon={<UploadIcon />}
-              onClick={() => fileInputRef.current?.click()}
-              sx={{ mb: 2 }}
-            >
-              Dateien auswählen
-            </Button>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Unterstützte Formate: PDF, DOC, DOCX, JPG, PNG, TXT (Max. 10MB pro Datei)
-            </Typography>
-            
-            {uploadedFiles.length > 0 && (
-              <List dense>
-                {uploadedFiles.map((file) => (
-                  <ListItem key={file.id} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, mb: 1 }}>
-                    <FileIcon sx={{ mr: 1, color: 'primary.main' }} />
-                    <ListItemText
-                      primary={file.name}
-                      secondary={`${formatFileSize(file.size)} • ${file.type}`}
+          {/* Leistungen */}
+          <Typography variant="h6" gutterBottom>
+            Leistungen (Mehrfachauswahl per Checkbox)
+          </Typography>
+          
+          <Box sx={{ display: 'flex', gap: 4, mb: 3, flexWrap: 'wrap' }}>
+            <Box sx={{ flex: 1, minWidth: 300 }}>
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.rundeTische}
+                      onChange={(e) => setFormData(prev => ({ ...prev, rundeTische: e.target.checked }))}
                     />
-                    <ListItemSecondaryAction>
-                      <IconButton
-                        edge="end"
-                        aria-label="delete"
-                        onClick={() => handleFileDelete(file.id)}
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                ))}
-              </List>
-            )}
+                  }
+                  label="Runde Tische"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.eckigeTische}
+                      onChange={(e) => setFormData(prev => ({ ...prev, eckigeTische: e.target.checked }))}
+                    />
+                  }
+                  label="Eckige Tische"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.haehnchengeschnetzeltes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, haehnchengeschnetzeltes: e.target.checked }))}
+                    />
+                  }
+                  label="Hähnchengeschnetzeltes (Tischservice)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.rindergulasch}
+                      onChange={(e) => setFormData(prev => ({ ...prev, rindergulasch: e.target.checked }))}
+                    />
+                  }
+                  label="Rindergulasch (Tischservice)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.reisGemuese}
+                      onChange={(e) => setFormData(prev => ({ ...prev, reisGemuese: e.target.checked }))}
+                    />
+                  }
+                  label="Reis & Gemüse (Tischservice)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.salat}
+                      onChange={(e) => setFormData(prev => ({ ...prev, salat: e.target.checked }))}
+                    />
+                  }
+                  label="Salat entsprechend der Jahreszeit (Tischservice)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.halbesHaehnchen}
+                      onChange={(e) => setFormData(prev => ({ ...prev, halbesHaehnchen: e.target.checked }))}
+                    />
+                  }
+                  label="Halbes Hähnchen (Tischservice)"
+                />
+              </FormGroup>
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 300 }}>
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.vorspeisenBrot}
+                      onChange={(e) => setFormData(prev => ({ ...prev, vorspeisenBrot: e.target.checked }))}
+                    />
+                  }
+                  label="3 Sorten Vorspeisen und Brot (Meze) – Tischservice"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.obstteller}
+                      onChange={(e) => setFormData(prev => ({ ...prev, obstteller: e.target.checked }))}
+                    />
+                  }
+                  label="Obstteller (Tischservice)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.nachtisch}
+                      onChange={(e) => setFormData(prev => ({ ...prev, nachtisch: e.target.checked }))}
+                    />
+                  }
+                  label="Nachtisch (z. B. Baklava pro Tisch – 1 Teller)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.teeKaffee}
+                      onChange={(e) => setFormData(prev => ({ ...prev, teeKaffee: e.target.checked }))}
+                    />
+                  }
+                  label="Tee & Kaffeeservice"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.softgetraenke}
+                      onChange={(e) => setFormData(prev => ({ ...prev, softgetraenke: e.target.checked }))}
+                    />
+                  }
+                  label="Softgetränke & Mineralwasser (ohne Limit)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.hochzeitstorte}
+                      onChange={(e) => setFormData(prev => ({ ...prev, hochzeitstorte: e.target.checked }))}
+                    />
+                  }
+                  label="Hochzeitstorte (4–5 Etagen, Pyramidenform)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.kabernebeer}
+                      onChange={(e) => setFormData(prev => ({ ...prev, kabernebeer: e.target.checked }))}
+                    />
+                  }
+                  label="Kabernebeer (Cerez) – Tischservice"
+                />
+              </FormGroup>
+            </Box>
           </Box>
 
-          {/* Description and Notes */}
-          <Box sx={{ mb: 3 }}>
-            <TextField
-              fullWidth
-              label="Beschreibung"
-              multiline
-              rows={3}
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            />
+          <Divider sx={{ my: 3 }} />
+
+          {/* Allgemeiner Service */}
+          <Typography variant="h6" gutterBottom>
+            Allgemeiner Service
+          </Typography>
+          
+          <Box sx={{ display: 'flex', gap: 4, mb: 3, flexWrap: 'wrap' }}>
+            <Box sx={{ flex: 1, minWidth: 300 }}>
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.band}
+                      onChange={(e) => setFormData(prev => ({ ...prev, band: e.target.checked }))}
+                    />
+                  }
+                  label="Band"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.dj}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dj: e.target.checked }))}
+                    />
+                  }
+                  label="DJ"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.kameraKranOhne}
+                      onChange={(e) => setFormData(prev => ({ ...prev, kameraKranOhne: e.target.checked }))}
+                    />
+                  }
+                  label="1× Kamera-Kran HD (ohne Brautabholung)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.kameraKranMit}
+                      onChange={(e) => setFormData(prev => ({ ...prev, kameraKranMit: e.target.checked }))}
+                    />
+                  }
+                  label="1× Kamera-Kran HD (mit Brautabholung)"
+                />
+              </FormGroup>
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 300 }}>
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.davulZurnaOhne}
+                      onChange={(e) => setFormData(prev => ({ ...prev, davulZurnaOhne: e.target.checked }))}
+                    />
+                  }
+                  label="1× Davul & Zurna (4–5 Std. im Saal)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.davulZurnaMit}
+                      onChange={(e) => setFormData(prev => ({ ...prev, davulZurnaMit: e.target.checked }))}
+                    />
+                  }
+                  label="1× Davul & Zurna (inkl. Brautabholung und 4–5 Std. im Saal)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.saalDekoration}
+                      onChange={(e) => setFormData(prev => ({ ...prev, saalDekoration: e.target.checked }))}
+                    />
+                  }
+                  label="Saal- & Tischdekoration"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.feuerwerkBodennebel}
+                      onChange={(e) => setFormData(prev => ({ ...prev, feuerwerkBodennebel: e.target.checked }))}
+                    />
+                  }
+                  label="Feuerwerk & Bodennebel (für den 1. Tanz)"
+                />
+              </FormGroup>
+            </Box>
           </Box>
 
-          <Box sx={{ mb: 3 }}>
-            <TextField
-              fullWidth
-              label="Besondere Anforderungen"
-              multiline
-              rows={2}
-              value={formData.specialRequirements}
-              onChange={(e) => setFormData(prev => ({ ...prev, specialRequirements: e.target.value }))}
-            />
+          <Divider sx={{ my: 3 }} />
+
+          {/* Veranstaltungszeit */}
+          <Typography variant="h6" gutterBottom>
+            Veranstaltungszeit
+          </Typography>
+          
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+              Feste Zeit: 16:00 Uhr bis 24:00 Uhr
+            </Typography>
+            <Typography variant="body2">
+              Nach 24:00 Uhr ist für jede weitere angefangene Stunde eine zusätzliche Gebühr von 500 € fällig (zusätzlich zur Saalmiete).
+            </Typography>
+          </Alert>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Kostenübersicht */}
+          <Typography variant="h6" gutterBottom>
+            Kostenübersicht
+          </Typography>
+          
+          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+            <Box sx={{ flex: 1, minWidth: 200 }}>
+              <TextField
+                fullWidth
+                label="Mietzahlung (€)"
+                type="number"
+                value={formData.mietzahlung}
+                onChange={(e) => setFormData(prev => ({ ...prev, mietzahlung: e.target.value }))}
+              />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 200 }}>
+              <TextField
+                fullWidth
+                label="Servicezahlung (€)"
+                type="number"
+                value={formData.servicezahlung}
+                onChange={(e) => setFormData(prev => ({ ...prev, servicezahlung: e.target.value }))}
+              />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 200 }}>
+              <TextField
+                fullWidth
+                label="Gesamtzahlung (€)"
+                type="number"
+                value={formData.gesamtzahlung}
+                onChange={(e) => setFormData(prev => ({ ...prev, gesamtzahlung: e.target.value }))}
+              />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 200 }}>
+              <TextField
+                fullWidth
+                label="Anzahlung (€)"
+                type="number"
+                value={formData.anzahlung}
+                onChange={(e) => setFormData(prev => ({ ...prev, anzahlung: e.target.value }))}
+              />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 200 }}>
+              <TextField
+                fullWidth
+                label="Restzahlung (€)"
+                type="number"
+                value={formData.restzahlung}
+                onChange={(e) => setFormData(prev => ({ ...prev, restzahlung: e.target.value }))}
+              />
+            </Box>
           </Box>
 
-          <Box sx={{ mb: 3 }}>
-            <TextField
-              fullWidth
-              label="Notizen"
-              multiline
-              rows={2}
-              value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-            />
+          <Divider sx={{ my: 3 }} />
+
+          {/* Extras / Zusatzleistungen */}
+          <Typography variant="h6" gutterBottom>
+            Extras / Zusatzleistungen (Checkbox-Mehrfachauswahl)
+          </Typography>
+          
+          <Box sx={{ display: 'flex', gap: 4, mb: 3, flexWrap: 'wrap' }}>
+            <Box sx={{ flex: 1, minWidth: 300 }}>
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.goldEingangsfeuerwerk}
+                      onChange={(e) => setFormData(prev => ({ ...prev, goldEingangsfeuerwerk: e.target.checked }))}
+                    />
+                  }
+                  label="Gold- & Eingangsfeuerwerk (2 Stück), 4× Bodennebel, 1. Tanz Feuerwerk – 300 €"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.helikopterlandung}
+                      onChange={(e) => setFormData(prev => ({ ...prev, helikopterlandung: e.target.checked }))}
+                    />
+                  }
+                  label="Helikopterlandung auf Parkplatz – 2.000 €"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.feuerwerkEingang}
+                      onChange={(e) => setFormData(prev => ({ ...prev, feuerwerkEingang: e.target.checked }))}
+                    />
+                  }
+                  label="Feuerwerk beim Eingang, 1. Tanz, Kuchen – 1.000 €"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.dekorVintage}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dekorVintage: e.target.checked }))}
+                    />
+                  }
+                  label="Dekor 'Vintage' – 400 € (inkl. Silbervasen & Kerzen)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.dekorPlatin}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dekorPlatin: e.target.checked }))}
+                    />
+                  }
+                  label="Dekor 'Platin' – 600 € (inkl. 9 Kerzenständer & Vasen)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.obstKuchenbuffet}
+                      onChange={(e) => setFormData(prev => ({ ...prev, obstKuchenbuffet: e.target.checked }))}
+                    />
+                  }
+                  label="Obst- & Kuchenbuffet inkl. Tatlı – 1.500 € (max. 300 Pers.)"
+                />
+              </FormGroup>
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 300 }}>
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.mezeBuffet}
+                      onChange={(e) => setFormData(prev => ({ ...prev, mezeBuffet: e.target.checked }))}
+                    />
+                  }
+                  label="Meze-Buffet mit Hauptgang – 1.250 €, je 100 Pers. extra +150 €"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.cigkoefte}
+                      onChange={(e) => setFormData(prev => ({ ...prev, cigkoefte: e.target.checked }))}
+                    />
+                  }
+                  label="Çiğköfte (Tischservice) für 1.000 Personen – 1.500 €, +150 €/weitere 100 Pers."
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.vegetarischesBuffet}
+                      onChange={(e) => setFormData(prev => ({ ...prev, vegetarischesBuffet: e.target.checked }))}
+                    />
+                  }
+                  label="Vegetarisches Buffet (4 Sorten Menü) – 500 €"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.suppeHauptgang}
+                      onChange={(e) => setFormData(prev => ({ ...prev, suppeHauptgang: e.target.checked }))}
+                    />
+                  }
+                  label="Suppe vor Hauptgang (Tischservice) – 2.100 € für 700 Pers."
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.cocktailEmpfang}
+                      onChange={(e) => setFormData(prev => ({ ...prev, cocktailEmpfang: e.target.checked }))}
+                    />
+                  }
+                  label="Cocktail-Empfang (alkoholfrei, 2 Std., max. 1.000 Pers.) – 1.200 €"
+                />
+              </FormGroup>
+            </Box>
           </Box>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Hinweise */}
+          <Typography variant="h6" gutterBottom>
+            Hinweise
+          </Typography>
+          
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            <Typography variant="body2" component="div">
+              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                <li>Kein Vorsteuerabzug möglich.</li>
+                <li>Bei Absage durch den Kunden (auch bei Todesfällen) wird die Anzahlung nicht erstattet.</li>
+                <li>Veranstalter kann bei Absage Strafzahlungen verlangen.</li>
+                <li>Höhere Gewalt kann zur Absage führen.</li>
+                <li>Mieter muss selbst eine Eventversicherung (z. B. Hansa Merkur) abschließen.</li>
+              </ul>
+            </Typography>
+          </Alert>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Datum & Unterschrift */}
+          <Typography variant="h6" gutterBottom>
+            Datum & Unterschrift
+          </Typography>
+          
+          <TextField
+            fullWidth
+            label="Unterschrift"
+            multiline
+            rows={3}
+            value={formData.signature}
+            onChange={(e) => setFormData(prev => ({ ...prev, signature: e.target.value }))}
+            placeholder="Hier können Sie Ihre Unterschrift eingeben oder Notizen hinzufügen..."
+          />
+
         </Box>
       </DialogContent>
       <DialogActions>
@@ -551,9 +745,10 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
           onClick={handleSubmit} 
           variant="contained"
           disabled={
-            !formData.title.trim() ||
-            !formData.firstName.trim() ||
-            !formData.lastName.trim()
+            !formData.customerName.trim() ||
+            !formData.personCount.trim() ||
+            !formData.eventType.trim() ||
+            (!formData.eventsaal1 && !formData.eventsaal2)
           }
         >
           Event erstellen
