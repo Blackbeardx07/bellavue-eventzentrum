@@ -24,7 +24,6 @@ interface CustomerDetailProps {
   events: Event[];
   onSave: (customer: Customer) => void;
   onDelete: (customer: Customer) => void;
-  onEventClick: (event: Event) => void;
   mode?: 'view' | 'edit' | string;
 }
 
@@ -33,7 +32,6 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
   events,
   onSave,
   onDelete,
-  onEventClick,
   mode
 }) => {
   const [isEditing, setIsEditing] = React.useState(mode === 'edit');
@@ -75,7 +73,9 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
   };
 
   const handleEventClick = (event: Event) => {
-    onEventClick(event);
+    console.log('Event clicked in CustomerDetail:', event);
+    // Navigiere zur Event-Detail-Seite
+    navigate(`/event/${event.id}?mode=view`);
   };
 
   return (

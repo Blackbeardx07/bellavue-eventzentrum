@@ -26,8 +26,7 @@ const CustomerDetailWrapper: React.FC<{
   events: Event[];
   onSave: (customer: Customer) => void;
   onDelete: (customer: Customer) => void;
-  onEventClick: (event: Event) => void;
-}> = ({ customers, events, onSave, onDelete, onEventClick }) => {
+}> = ({ customers, events, onSave, onDelete }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -54,7 +53,6 @@ const CustomerDetailWrapper: React.FC<{
       events={events} 
       onSave={onSave} 
       onDelete={onDelete} 
-      onEventClick={onEventClick} 
       mode={mode}
     />
   );
@@ -125,17 +123,53 @@ function App() {
   useEffect(() => {
     console.log('Setting up Firebase auth and listeners...');
     
+    // Warten auf Firebase Initialisierung, dann authentifizieren
+    const initializeAuth = async () => {
+      // Warte kurz, damit Firebase vollständig initialisiert ist
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      try {
+        console.log('Attempting anonymous authentication...');
+        const userCredential = await signInAnonymously(auth);
+        console.log('Anonymous authentication successful:', userCredential.user.uid);
+        console.log('Auth token:', await userCredential.user.getIdToken());
+      } catch (error) {
+        console.error('Anonymous authentication failed:', error);
+        console.error('Error details:', error);
+        
+        // Mehrfache Versuche mit steigenden Verzögerungen
+        for (let i = 1; i <= 3; i++) {
+          setTimeout(async () => {
+            try {
+              console.log(`Retry authentication attempt ${i}...`);
+              await signInAnonymously(auth);
+              console.log(`Retry ${i} authentication successful`);
+            } catch (retryError) {
+              console.error(`Retry ${i} authentication failed:`, retryError);
+            }
+          }, i * 2000);
+        }
+      }
+    };
+    
+    initializeAuth();
+    
     // Firebase Auth State Listener
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         console.log('User authenticated:', user.uid);
+        try {
+          const token = await user.getIdToken();
+          console.log('Current auth token:', token);
+        } catch (tokenError) {
+          console.error('Error getting token:', tokenError);
+        }
       } else {
-        console.log('No user, signing in anonymously...');
+        console.log('No user authenticated - attempting to sign in...');
         try {
           await signInAnonymously(auth);
-          console.log('Anonymous authentication successful');
         } catch (error) {
-          console.error('Anonymous authentication failed:', error);
+          console.error('Auto sign-in failed:', error);
         }
       }
     });
@@ -212,50 +246,56 @@ function App() {
     setConfirmDialog({ open: false, data: null });
   };
 
-  const handleEventClick = (event: Event) => {
-    console.log('Event clicked:', event);
-  };
 
   const handleNewEvent = async (newEvent: Omit<Event, 'id'>, newCustomer: any) => {
     try {
       console.log('handleNewEvent aufgerufen mit:', { newEvent, newCustomer });
-      let customerId = '';
       
-      // Wenn ein neuer Kunde erstellt wurde
+      // TEMPORÄRE LÖSUNG: Lokale Speicherung ohne Firebase
+      console.log('Speichere Service-Angebot lokal...');
+      
+      // Event mit ID erstellen
+      const eventId = Date.now().toString() + Math.random().toString(36).substr(2, 6);
+      const eventWithId = {
+        ...newEvent,
+        id: eventId,
+        customerId: newCustomer?.name ? 'temp-customer-' + Date.now() : ''
+      };
+      
+      // Kunde mit ID erstellen (falls vorhanden)
+      let customerId = '';
       if (newCustomer && newCustomer.name) {
-        console.log('Erstelle neuen Kunden...');
-        customerId = await customerService.createCustomer(newCustomer);
-        console.log('Neuer Kunde erstellt mit ID:', customerId);
-        
-        // Event mit Kunden-ID verknüpfen
-        const eventWithCustomer = {
-          ...newEvent,
-          customerId: customerId
-        };
-        console.log('Event mit Kunden-ID:', eventWithCustomer);
-        
-        // Event erstellen
-        const eventId = await eventService.createEvent(eventWithCustomer);
-        console.log('Event erstellt mit ID:', eventId);
-        
-        // Kunde mit Event-ID verknüpfen
-        const updatedCustomer = {
+        customerId = 'temp-customer-' + Date.now();
+        const customerWithId = {
           ...newCustomer,
           id: customerId,
           events: [eventId]
         };
-        await customerService.updateCustomer(customerId, updatedCustomer);
-        console.log('Kunde mit Event verknüpft');
         
-        // Bestätigung
-        alert(`Service-Angebot erfolgreich erstellt!\nKunde: ${newCustomer.name}\nEvent: ${newEvent.title}`);
-      } else {
-        console.log('Erstelle Event ohne neuen Kunden...');
-        // Event ohne neuen Kunden erstellen
-        const eventId = await eventService.createEvent(newEvent);
-        console.log('Event erstellt mit ID:', eventId);
-        alert(`Event erfolgreich erstellt: ${newEvent.title}`);
+        // Lokal speichern
+        const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
+        existingCustomers.push(customerWithId);
+        localStorage.setItem('bellavue-customers', JSON.stringify(existingCustomers));
+        console.log('Kunde lokal gespeichert:', customerWithId);
       }
+      
+      // Event lokal speichern
+      const existingEvents = JSON.parse(localStorage.getItem('bellavue-events') || '[]');
+      existingEvents.push(eventWithId);
+      localStorage.setItem('bellavue-events', JSON.stringify(existingEvents));
+      console.log('Event lokal gespeichert:', eventWithId);
+      
+      // UI aktualisieren
+      setEvents(prev => [...prev, eventWithId]);
+      if (customerId) {
+        setCustomers(prev => [...prev, {
+          ...newCustomer,
+          id: customerId,
+          events: [eventId]
+        } as Customer]);
+      }
+      
+      // Bestätigung entfernt - wird über PDF Dialog gezeigt
       
     } catch (error) {
       console.error('Fehler beim Erstellen des Events:', error);
@@ -305,8 +345,19 @@ function App() {
 
   const handleEventSave = async (event: Event) => {
     try {
-      await eventService.updateEvent(event.id, event);
-      console.log('Event aktualisiert:', event.id);
+      console.log('Event wird lokal aktualisiert:', event.id);
+      
+      // Event in localStorage aktualisieren
+      const existingEvents = JSON.parse(localStorage.getItem('bellavue-events') || '[]');
+      const updatedEvents = existingEvents.map((e: Event) => 
+        e.id === event.id ? event : e
+      );
+      localStorage.setItem('bellavue-events', JSON.stringify(updatedEvents));
+      
+      // UI State aktualisieren
+      setEvents(prev => prev.map(e => e.id === event.id ? event : e));
+      
+      console.log('Event erfolgreich lokal aktualisiert:', event.id);
     } catch (error) {
       console.error('Fehler beim Aktualisieren des Events:', error);
     }
@@ -314,8 +365,17 @@ function App() {
 
   const handleEventDelete = async (event: Event) => {
     try {
-      await eventService.deleteEvent(event.id);
-      console.log('Event gelöscht:', event.id);
+      console.log('Event wird lokal gelöscht:', event.id);
+      
+      // Event aus localStorage entfernen
+      const existingEvents = JSON.parse(localStorage.getItem('bellavue-events') || '[]');
+      const filteredEvents = existingEvents.filter((e: Event) => e.id !== event.id);
+      localStorage.setItem('bellavue-events', JSON.stringify(filteredEvents));
+      
+      // UI State aktualisieren
+      setEvents(prev => prev.filter(e => e.id !== event.id));
+      
+      console.log('Event erfolgreich lokal gelöscht:', event.id);
     } catch (error) {
       console.error('Fehler beim Löschen des Events:', error);
     }
@@ -323,8 +383,19 @@ function App() {
 
   const handleCustomerSave = async (customer: Customer) => {
     try {
-      await customerService.updateCustomer(customer.id, customer);
-      console.log('Kunde aktualisiert:', customer.id);
+      console.log('Kunde wird lokal aktualisiert:', customer.id);
+      
+      // Kunde in localStorage aktualisieren
+      const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
+      const updatedCustomers = existingCustomers.map((c: Customer) => 
+        c.id === customer.id ? customer : c
+      );
+      localStorage.setItem('bellavue-customers', JSON.stringify(updatedCustomers));
+      
+      // UI State aktualisieren
+      setCustomers(prev => prev.map(c => c.id === customer.id ? customer : c));
+      
+      console.log('Kunde erfolgreich lokal aktualisiert:', customer.id);
     } catch (error) {
       console.error('Fehler beim Aktualisieren des Kunden:', error);
     }
@@ -332,8 +403,17 @@ function App() {
 
   const handleCustomerDelete = async (customer: Customer) => {
     try {
-      await customerService.deleteCustomer(customer.id);
-      console.log('Kunde gelöscht:', customer.id);
+      console.log('Kunde wird lokal gelöscht:', customer.id);
+      
+      // Kunde aus localStorage entfernen
+      const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
+      const filteredCustomers = existingCustomers.filter((c: Customer) => c.id !== customer.id);
+      localStorage.setItem('bellavue-customers', JSON.stringify(filteredCustomers));
+      
+      // UI State aktualisieren
+      setCustomers(prev => prev.filter(c => c.id !== customer.id));
+      
+      console.log('Kunde erfolgreich lokal gelöscht:', customer.id);
     } catch (error) {
       console.error('Fehler beim Löschen des Kunden:', error);
     }
@@ -359,9 +439,12 @@ function App() {
   };
 
   useEffect(() => {
-    // Beispiel-Event nur hinzufügen, wenn es noch nicht existiert
-    const exists = events.some(e => e.date === '2025-10-18' && e.title.includes('Yılmaz'));
-    if (!exists) {
+    // Events aus localStorage laden
+    const savedEvents = JSON.parse(localStorage.getItem('bellavue-events') || '[]');
+    if (savedEvents.length > 0) {
+      setEvents(savedEvents);
+    } else {
+      // Beispiel-Event nur hinzufügen, wenn keine gespeicherten Events vorhanden sind
       const customerId = '1001';
       const newCustomer = {
         id: customerId,
@@ -415,6 +498,12 @@ function App() {
         }
       };
       setEvents(prev => [...prev, newEvent]);
+    }
+    
+    // Kunden aus localStorage laden
+    const savedCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
+    if (savedCustomers.length > 0) {
+      setCustomers(savedCustomers);
     }
   }, []);
 
@@ -475,7 +564,6 @@ function App() {
                         events={events} 
                         onSave={handleCustomerSave} 
                         onDelete={handleCustomerDelete} 
-                        onEventClick={handleEventClick} 
                       />
                     } 
                   />
