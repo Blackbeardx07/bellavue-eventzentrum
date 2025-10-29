@@ -82,23 +82,35 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ open, onClose, onSubmit, ev
 
   const handleSubmit = () => {
     const newCustomer: Omit<Customer, 'id'> = {
+      // Grunddaten
+      firstName: formData.name.split(' ')[0] || '',
+      lastName: formData.name.split(' ').slice(1).join(' ') || '',
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
-      address: formData.address,
+      mobile: formData.phone, // Use phone as mobile
+      address: formData.address || '',
+      // Brautpaar Felder (leer für normale Kunden)
+      addressBride: '',
+      addressGroom: '',
+      nationalityBride: '',
+      nationalityGroom: '',
+      ageBride: '',
+      ageGroom: '',
+      // Standard Felder
       events: formData.events,
-      tags: formData.tags,
-      notes: formData.notes,
-      contactPerson: formData.contactPerson,
-      company: formData.company,
-      website: formData.website,
-      vatNumber: formData.vatNumber,
-      birthday: formData.birthday,
-      anniversary: formData.anniversary,
-      preferences: formData.preferences,
-      budget: formData.budget,
-      guestCount: formData.guestCount,
-      specialRequirements: formData.specialRequirements
+      notes: formData.notes || '',
+      contactPerson: formData.contactPerson || '',
+      company: formData.company || '',
+      budget: formData.budget || '',
+      guestCount: formData.guestCount || '',
+      specialRequirements: formData.specialRequirements || '',
+      preferences: formData.preferences || {
+        catering: false,
+        decoration: false,
+        music: false,
+        photography: false
+      }
     };
 
     onSubmit(newCustomer);

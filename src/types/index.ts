@@ -17,42 +17,118 @@ export interface Event {
   files?: string[];
   assignedStaff?: string[];
   comments?: string[];
+  // Zusätzliche Felder
   guestCount?: string;
   kosten?: string;
-  specialRequirements?: string;
-  notes?: string;
   eventTypes?: string[];
   preferences?: {
-    catering: boolean;
-    decoration: boolean;
-    music: boolean;
-    photography: boolean;
+    catering?: boolean;
+    decoration?: boolean;
+    music?: boolean;
+    photography?: boolean;
   };
+  specialRequirements?: string;
+  notes?: string;
+  // Event Details
+  personenanzahl?: string;
+  veranstaltungsart?: string;
+  eventsaal1?: boolean;
+  eventsaal2?: boolean;
+  veranstaltungsdatum?: string;
+  wochentag?: string;
+  // Kostenübersicht
+  angebotssumme?: string;
+  saalmiete?: string;
+  service?: string;
+  gesamtpreis?: string;
+  anzahlung?: string;
+  restzahlung?: string;
+  // Tischaufstellung
+  rundeTische?: boolean;
+  eckigeTische?: boolean;
+  // Essen & Catering
+  etSoteHaehnchengeschnetzeltes?: boolean;
+  tavukSoteRindergulasch?: boolean;
+  halbesHaehnchen?: boolean;
+  reis?: boolean;
+  gemuese?: boolean;
+  salatJahreszeit?: boolean;
+  pommesSalzkartoffel?: boolean;
+  antipastiVorspeisenBrot?: boolean;
+  knabbereienCerez?: boolean;
+  obstschale?: boolean;
+  nachtischBaklava?: boolean;
+  // Getränke
+  teeKaffeeservice?: boolean;
+  softgetraenkeMineralwasser?: boolean;
+  // Torte
+  hochzeitstorte3Etagen?: boolean;
+  hochzeitstorteFlach?: boolean;
+  // Service
+  standardDekoration?: boolean;
+  serviceAllgemein?: boolean;
+  bandDj?: boolean;
+  // Video & Fotografie
+  videoKameraKranHDOhne?: boolean;
+  videoKameraKranHDMit?: boolean;
+  videoKameraKranHDMitBrautigam?: boolean;
+  fotoshootingUSB?: boolean;
+  weddingStoryClip?: boolean;
+  fotoalbum?: boolean;
+  // Musik
+  davulZurna4Stunden?: boolean;
+  davulZurnaMitBrautabholung?: boolean;
+  // Dekoration & Effekte
+  saeulenabgrenzungBlumenFeuerwerk?: boolean;
+  saeulenabgrenzungKuchenAnschneiden?: boolean;
+  eingangsfeuerwerkBrautpaar?: boolean;
+  // Extras
+  helikopterlandung?: boolean;
+  obstKuchenbuffetTatli?: boolean;
+  cigkoefteTischservice?: boolean;
+  suppeHauptgang?: boolean;
+  cocktailEmpfang?: boolean;
+  // Unterschrift
+  signature?: string;
+  // Datum & Unterschrift
+  angebotAngenommen?: string;
+  datumUnterschriftKunde?: string;
+  datumUnterschriftBellavue?: string;
 }
 
 export interface Customer {
   id: string;
+  // Persönliche Informationen
   name: string;
+  firstName: string;
+  lastName: string;
+  company: string;
   email: string;
   phone: string;
-  address: string;
+  mobile: string;
+  address?: string;
+  // Anschrift Braut
+  addressBride: string;
+  // Anschrift Bräutigam
+  addressGroom: string;
+  // Nationalität
+  nationalityBride: string;
+  nationalityGroom: string;
+  // Alter
+  ageBride: string;
+  ageGroom: string;
   events: string[];
-  tags: string[];
   notes?: string;
+  // Zusätzliche Felder
   contactPerson?: string;
-  company?: string;
-  website?: string;
-  vatNumber?: string;
-  birthday?: string;
-  anniversary?: string;
   budget?: string;
   guestCount?: string;
   specialRequirements?: string;
   preferences?: {
-    catering: boolean;
-    decoration: boolean;
-    music: boolean;
-    photography: boolean;
+    catering?: boolean;
+    decoration?: boolean;
+    music?: boolean;
+    photography?: boolean;
   };
 }
 

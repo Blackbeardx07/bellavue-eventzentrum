@@ -50,7 +50,7 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onCustomerClick,
       customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.phone.includes(searchQuery) ||
-      customer.address.toLowerCase().includes(searchQuery.toLowerCase());
+      customer.address?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
 

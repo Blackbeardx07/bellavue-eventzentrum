@@ -16,7 +16,8 @@ import EventForm from './components/EventForm';
 import ConfirmDialog from './components/ConfirmDialog';
 import type { Event, Customer } from './types';
 import { eventService, customerService } from './firebase/firestore';
-import './firebase/config'; // Firebase initialisieren
+import { auth } from './firebase/config'; // Firebase initialisieren
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import theme from './theme';
 
 // CustomerDetail wrapper component to handle routing
@@ -120,15 +121,29 @@ function App() {
     return (localStorage.getItem('bellavue-role') as UserRole) || null;
   });
 
-  // Firebase Real-time Listeners
+  // Firebase Auth und Real-time Listeners
   useEffect(() => {
-    console.log('Setting up Firebase listeners...');
+    console.log('Setting up Firebase auth and listeners...');
+    
+    // Firebase Auth State Listener
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        console.log('User authenticated:', user.uid);
+      } else {
+        console.log('No user, signing in anonymously...');
+        try {
+          await signInAnonymously(auth);
+          console.log('Anonymous authentication successful');
+        } catch (error) {
+          console.error('Anonymous authentication failed:', error);
+        }
+      }
+    });
     
     // Events Listener
     const unsubscribeEvents = eventService.onEventsChange((newEvents) => {
       console.log('Events updated from Firebase:', newEvents);
       setEvents(newEvents);
-
     });
 
     // Customers Listener
@@ -140,6 +155,7 @@ function App() {
     // Cleanup listeners on unmount
     return () => {
       console.log('Cleaning up Firebase listeners...');
+      unsubscribeAuth();
       unsubscribeEvents();
       unsubscribeCustomers();
     };
@@ -202,18 +218,48 @@ function App() {
 
   const handleNewEvent = async (newEvent: Omit<Event, 'id'>, newCustomer: any) => {
     try {
-      // Event erstellen
-      const eventId = await eventService.createEvent(newEvent);
+      console.log('handleNewEvent aufgerufen mit:', { newEvent, newCustomer });
+      let customerId = '';
       
       // Wenn ein neuer Kunde erstellt wurde
       if (newCustomer && newCustomer.name) {
-        const customerId = await customerService.createCustomer(newCustomer);
-        console.log('Neuer Kunde erstellt:', customerId);
+        console.log('Erstelle neuen Kunden...');
+        customerId = await customerService.createCustomer(newCustomer);
+        console.log('Neuer Kunde erstellt mit ID:', customerId);
+        
+        // Event mit Kunden-ID verknüpfen
+        const eventWithCustomer = {
+          ...newEvent,
+          customerId: customerId
+        };
+        console.log('Event mit Kunden-ID:', eventWithCustomer);
+        
+        // Event erstellen
+        const eventId = await eventService.createEvent(eventWithCustomer);
+        console.log('Event erstellt mit ID:', eventId);
+        
+        // Kunde mit Event-ID verknüpfen
+        const updatedCustomer = {
+          ...newCustomer,
+          id: customerId,
+          events: [eventId]
+        };
+        await customerService.updateCustomer(customerId, updatedCustomer);
+        console.log('Kunde mit Event verknüpft');
+        
+        // Bestätigung
+        alert(`Service-Angebot erfolgreich erstellt!\nKunde: ${newCustomer.name}\nEvent: ${newEvent.title}`);
+      } else {
+        console.log('Erstelle Event ohne neuen Kunden...');
+        // Event ohne neuen Kunden erstellen
+        const eventId = await eventService.createEvent(newEvent);
+        console.log('Event erstellt mit ID:', eventId);
+        alert(`Event erfolgreich erstellt: ${newEvent.title}`);
       }
       
-      console.log('Event erstellt:', eventId);
     } catch (error) {
       console.error('Fehler beim Erstellen des Events:', error);
+      alert('Fehler beim Erstellen des Service-Angebots: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
@@ -342,7 +388,7 @@ function App() {
         guestCount: '300',
         specialRequirements: 'Bühne für Live-Band, Halal-Catering, Kinderbetreuung, Fotobox, große Tanzfläche, Dekoration in Gold & Rot'
       };
-      setCustomers(prev => [...prev, newCustomer]);
+      setCustomers(prev => [...prev, newCustomer as unknown as Customer]);
       const newEvent = {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 6),
         title: 'Türkische Hochzeit – Yılmaz & Demir',

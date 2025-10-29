@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -18,7 +18,8 @@ import {
   ListItemSecondaryAction,
   FormGroup,
   FormControlLabel,
-  Checkbox
+  Checkbox,
+  Alert
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -30,13 +31,16 @@ import {
   Save as SaveIcon,
   Edit as EditIcon,
   Description as FileIcon,
-  Download as DownloadIcon
+  Download as DownloadIcon,
+  PictureAsPdf as PdfIcon
 } from '@mui/icons-material';
 import type { Event } from '../types';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 import { getStatusLabel } from '../utils';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface EventDetailProps {
   event: Event;
@@ -53,6 +57,7 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useAuth();
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsEditing(mode === 'edit');
@@ -108,9 +113,45 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
     URL.revokeObjectURL(url);
   };
 
+  const handleExportPDF = async () => {
+    if (!contentRef.current) return;
+
+    try {
+      const canvas = await html2canvas(contentRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`event-${editedEvent.title.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`);
+    } catch (error) {
+      console.error('Fehler beim PDF-Export:', error);
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: 3 }} ref={contentRef}>
         {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4">
@@ -137,6 +178,13 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
               </>
             ) : (
               <>
+                <IconButton 
+                  onClick={handleExportPDF}
+                  sx={{ mr: 1 }}
+                  title="Als PDF exportieren"
+                >
+                  <PdfIcon />
+                </IconButton>
                 <IconButton 
                   onClick={() => {
                     if (mode !== 'edit') {
@@ -252,6 +300,1012 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
               </Box>
             </Box>
           )}
+
+          {/* Service-Angebot Details */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+            Service-Angebot Details
+          </Typography>
+          
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+            gap: 3, 
+            mb: 4,
+            p: 3,
+            backgroundColor: 'background.paper',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <TextField
+              fullWidth
+              label="Veranstaltungsart"
+              value={editedEvent.veranstaltungsart || editedEvent.eventTypes?.[0] || ''}
+              onChange={(e) => setEditedEvent(prev => ({ 
+                ...prev, 
+                veranstaltungsart: e.target.value,
+                eventTypes: [e.target.value]
+              }))}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Personenanzahl"
+              type="number"
+              value={editedEvent.personenanzahl || editedEvent.guestCount || ''}
+              onChange={(e) => setEditedEvent(prev => ({ 
+                ...prev, 
+                personenanzahl: e.target.value,
+                guestCount: e.target.value
+              }))}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Wochentag"
+              value={editedEvent.wochentag || editedEvent.description?.split('\n').find(line => line.includes('Wochentag'))?.split(': ')[1] || ''}
+              onChange={(e) => {
+                setEditedEvent(prev => ({ 
+                  ...prev, 
+                  wochentag: e.target.value
+                }));
+              }}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Angebotssumme (€)"
+              type="number"
+              value={editedEvent.angebotssumme || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, angebotssumme: e.target.value }))}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Saalmiete (€)"
+              type="number"
+              value={editedEvent.saalmiete || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, saalmiete: e.target.value }))}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Service (€)"
+              type="number"
+              value={editedEvent.service || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, service: e.target.value }))}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Gesamtpreis (€)"
+              type="number"
+              value={editedEvent.gesamtpreis || editedEvent.kosten || ''}
+              onChange={(e) => setEditedEvent(prev => ({ 
+                ...prev, 
+                gesamtpreis: e.target.value,
+                kosten: e.target.value
+              }))}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Anzahlung (€)"
+              type="number"
+              value={editedEvent.anzahlung || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, anzahlung: e.target.value }))}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Restzahlung (€)"
+              type="number"
+              value={editedEvent.restzahlung || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, restzahlung: e.target.value }))}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+          </Box>
+
+          {/* Allgemeine Event Information */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+            Allgemeine Event Information
+          </Typography>
+          
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+            gap: 3, 
+            mb: 4,
+            p: 3,
+            backgroundColor: 'background.paper',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <TextField
+              fullWidth
+              label="Anzahl Personen"
+              type="number"
+              value={editedEvent.guestCount || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, guestCount: e.target.value }))}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Veranstaltungsart"
+              value={editedEvent.eventTypes?.[0] || ''}
+              onChange={(e) => setEditedEvent(prev => ({ 
+                ...prev, 
+                eventTypes: [e.target.value]
+              }))}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Wochentag"
+              value={editedEvent.description?.split('\n').find(line => line.includes('Wochentag'))?.split(': ')[1] || ''}
+              onChange={(e) => {
+                const lines = editedEvent.description?.split('\n') || [];
+                const updatedLines = lines.map(line => 
+                  line.includes('Wochentag') ? `Wochentag: ${e.target.value}` : line
+                );
+                setEditedEvent(prev => ({ 
+                  ...prev, 
+                  description: updatedLines.join('\n')
+                }));
+              }}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+          </Box>
+
+          {/* Eventsaal Auswahl */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Eventsaal (Checkbox-Auswahl):
+            </Typography>
+            <FormGroup row>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={editedEvent.room?.includes('Eventsaal 1') || false}
+                    disabled={!isEditing}
+                  />
+                }
+                label="Eventsaal 1"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={editedEvent.room?.includes('Eventsaal 2') || false}
+                    disabled={!isEditing}
+                  />
+                }
+                label="Eventsaal 2"
+              />
+            </FormGroup>
+          </Box>
+
+          {/* Service-Angebot Leistungen */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+            Service-Angebot Leistungen
+          </Typography>
+          
+          <Box sx={{ 
+            p: 3, 
+            backgroundColor: 'background.paper',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            mb: 4
+          }}>
+            <Box sx={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <Box sx={{ flex: 1, minWidth: 350 }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                  Tischaufstellung
+                </Typography>
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.rundeTische || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, rundeTische: e.target.checked }))}
+                      />
+                    }
+                    label="Runde Tische"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.eckigeTische || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, eckigeTische: e.target.checked }))}
+                      />
+                    }
+                    label="Eckige Tische"
+                  />
+                </FormGroup>
+
+                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mb: 2, mt: 3 }}>
+                  Essen & Catering
+                </Typography>
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.etSoteHaehnchengeschnetzeltes || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, etSoteHaehnchengeschnetzeltes: e.target.checked }))}
+                      />
+                    }
+                    label="Et Sote / Hähnchengeschnetzeltes (Tischbuffet)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.tavukSoteRindergulasch || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, tavukSoteRindergulasch: e.target.checked }))}
+                      />
+                    }
+                    label="Tavuk Sote / Rindergulasch (Tischbuffet)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.halbesHaehnchen || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, halbesHaehnchen: e.target.checked }))}
+                      />
+                    }
+                    label="Halbes Hähnchen (Tischservice)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.reis || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, reis: e.target.checked }))}
+                      />
+                    }
+                    label="Reis (Tischbuffet)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.gemuese || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, gemuese: e.target.checked }))}
+                      />
+                    }
+                    label="Gemüse (Tischbuffet) oder"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.salatJahreszeit || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, salatJahreszeit: e.target.checked }))}
+                      />
+                    }
+                    label="Salat entsprechend der Jahreszeit (Tischbuffet)"
+                  />
+                </FormGroup>
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 350 }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                  Getränke
+                </Typography>
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.teeKaffeeservice || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, teeKaffeeservice: e.target.checked }))}
+                      />
+                    }
+                    label="Tee & Kaffeeservice (Tee & Kaffee Station und Service im Bistro)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.softgetraenkeMineralwasser || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, softgetraenkeMineralwasser: e.target.checked }))}
+                      />
+                    }
+                    label="Softgetränke und Mineralwasser (Tischservice ohne Limit)"
+                  />
+                </FormGroup>
+
+                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mb: 2, mt: 3 }}>
+                  Torte
+                </Typography>
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.hochzeitstorte3Etagen || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, hochzeitstorte3Etagen: e.target.checked }))}
+                      />
+                    }
+                    label="Hochzeitstorte 3 Etagen (Geschmack nach Wahl) oder"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.hochzeitstorteFlach || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, hochzeitstorteFlach: e.target.checked }))}
+                      />
+                    }
+                    label="Hochzeitstorte (flach) zum selber bestücken mit 5 Sorten Früchten"
+                  />
+                </FormGroup>
+
+                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mb: 2, mt: 3 }}>
+                  Service
+                </Typography>
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.standardDekoration || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, standardDekoration: e.target.checked }))}
+                      />
+                    }
+                    label="Standard Dekoration Saal sowie Tischdekoration"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.serviceAllgemein || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, serviceAllgemein: e.target.checked }))}
+                      />
+                    }
+                    label="Service im Allgemein"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.bandDj || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, bandDj: e.target.checked }))}
+                      />
+                    }
+                    label="Band & DJ"
+                  />
+                </FormGroup>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Leistungen */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+            Weitere Leistungen
+          </Typography>
+          
+          <Box sx={{ 
+            p: 3, 
+            backgroundColor: 'background.paper',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            mb: 4
+          }}>
+            <Box sx={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <Box sx={{ flex: 1, minWidth: 350 }}>
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.serviceAllgemein || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, serviceAllgemein: e.target.checked }))}
+                      />
+                    }
+                    label="Service im Allgemein"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.rundeTische || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, rundeTische: e.target.checked }))}
+                      />
+                    }
+                    label="Runde Tische"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.eckigeTische || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, eckigeTische: e.target.checked }))}
+                      />
+                    }
+                    label="Eckige Tische"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.etSoteHaehnchengeschnetzeltes || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, etSoteHaehnchengeschnetzeltes: e.target.checked }))}
+                      />
+                    }
+                    label="Hähnchengeschnetzeltes (Tischservice)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.tavukSoteRindergulasch || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, tavukSoteRindergulasch: e.target.checked }))}
+                      />
+                    }
+                    label="Rindergulasch (Tischservice)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.reis || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, reis: e.target.checked }))}
+                      />
+                    }
+                    label="Reis & Gemüse (Tischservice)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.salatJahreszeit || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, salatJahreszeit: e.target.checked }))}
+                      />
+                    }
+                    label="Salat entsprechend der Jahreszeit (Tischservice)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.halbesHaehnchen || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, halbesHaehnchen: e.target.checked }))}
+                      />
+                    }
+                    label="Halbes Hähnchen (Tischservice)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.antipastiVorspeisenBrot || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, antipastiVorspeisenBrot: e.target.checked }))}
+                      />
+                    }
+                    label="3 Sorten Vorspeisen und Brot (Meze) - Tischservice"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.obstschale || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, obstschale: e.target.checked }))}
+                      />
+                    }
+                    label="Obstteller (Tischservice)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.nachtischBaklava || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, nachtischBaklava: e.target.checked }))}
+                      />
+                    }
+                    label="Nachtisch (z. B. Baklava pro Tisch - 1 Teller)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.teeKaffeeservice || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, teeKaffeeservice: e.target.checked }))}
+                      />
+                    }
+                    label="Tee & Kaffeeservice"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.softgetraenkeMineralwasser || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, softgetraenkeMineralwasser: e.target.checked }))}
+                      />
+                    }
+                    label="Softgetränke & Mineralwasser (ohne Limit)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.hochzeitstorte3Etagen || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, hochzeitstorte3Etagen: e.target.checked }))}
+                      />
+                    }
+                    label="Hochzeitstorte (4-5 Etagen, Pyramidenform)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.standardDekoration || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, standardDekoration: e.target.checked }))}
+                      />
+                    }
+                    label="Knabbereien (Cerez) - Tischservice"
+                  />
+                </FormGroup>
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 350 }}>
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.bandDj || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, bandDj: e.target.checked }))}
+                      />
+                    }
+                    label="Band"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.serviceAllgemein || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, serviceAllgemein: e.target.checked }))}
+                      />
+                    }
+                    label="DJ"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.videoKameraKranHDOhne || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, videoKameraKranHDOhne: e.target.checked }))}
+                      />
+                    }
+                    label="1× Kamera-Kran HD (ohne Brautabholung)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.videoKameraKranHDMitBrautigam || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, videoKameraKranHDMitBrautigam: e.target.checked }))}
+                      />
+                    }
+                    label="1× Kamera-Kran HD (mit Brautabholung)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.davulZurna4Stunden || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, davulZurna4Stunden: e.target.checked }))}
+                      />
+                    }
+                    label="1× Davul & Zurna (4-5 Std. im Saal)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.davulZurnaMitBrautabholung || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, davulZurnaMitBrautabholung: e.target.checked }))}
+                      />
+                    }
+                    label="1× Davul & Zurna (inkl. Brautabholung und 4-5 Std. im Saal)"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.saeulenabgrenzungBlumenFeuerwerk || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, saeulenabgrenzungBlumenFeuerwerk: e.target.checked }))}
+                      />
+                    }
+                    label="Saal- & Tischdekoration"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={editedEvent.saeulenabgrenzungKuchenAnschneiden || false} 
+                        disabled={!isEditing}
+                        onChange={(e) => setEditedEvent(prev => ({ ...prev, saeulenabgrenzungKuchenAnschneiden: e.target.checked }))}
+                      />
+                    }
+                    label="Feuerwerk & Bodennebel (für den 1. Tanz)"
+                  />
+                </FormGroup>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Veranstaltungszeit */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+            Veranstaltungszeit
+          </Typography>
+          
+          <Box sx={{ 
+            p: 3, 
+            backgroundColor: 'background.paper',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            mb: 4
+          }}>
+            <Typography variant="body1" gutterBottom>
+              Feste Zeit: 16:00 Uhr bis 24:00 Uhr
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Nach 24:00 Uhr ist für jede weitere angefangene Stunde eine zusätzliche Gebühr von 500 € fällig (zusätzlich zur Saalmiete).
+            </Typography>
+          </Box>
+
+          {/* Kostenübersicht */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+            Kostenübersicht
+          </Typography>
+          
+          <Box sx={{ 
+            p: 3, 
+            backgroundColor: 'background.paper',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            mb: 4
+          }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* Erste Zeile: Mietzahlung + Servicezahlung = Gesamtzahlung */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: 1, minWidth: 200 }}>
+                  <TextField
+                    fullWidth
+                    label="Mietzahlung (€)"
+                    type="number"
+                    value={editedEvent.kosten ? (parseFloat(editedEvent.kosten) * 0.6).toString() : ''}
+                    onChange={(e) => {
+                      const mietzahlung = parseFloat(e.target.value) || 0;
+                      const servicezahlung = parseFloat(editedEvent.kosten || '0') - mietzahlung;
+                      setEditedEvent(prev => ({ 
+                        ...prev, 
+                        kosten: (mietzahlung + servicezahlung).toString()
+                      }));
+                    }}
+                    disabled={!isEditing}
+                  />
+                </Box>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
+                  +
+                </Typography>
+                <Box sx={{ flex: 1, minWidth: 200 }}>
+                  <TextField
+                    fullWidth
+                    label="Servicezahlung (€)"
+                    type="number"
+                    value={editedEvent.kosten ? (parseFloat(editedEvent.kosten) * 0.4).toString() : ''}
+                    onChange={(e) => {
+                      const servicezahlung = parseFloat(e.target.value) || 0;
+                      const mietzahlung = parseFloat(editedEvent.kosten || '0') - servicezahlung;
+                      setEditedEvent(prev => ({ 
+                        ...prev, 
+                        kosten: (mietzahlung + servicezahlung).toString()
+                      }));
+                    }}
+                    disabled={!isEditing}
+                  />
+                </Box>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
+                  =
+                </Typography>
+                <Box sx={{ flex: 1, minWidth: 200 }}>
+                  <TextField
+                    fullWidth
+                    label="Gesamtzahlung (€)"
+                    type="number"
+                    value={editedEvent.kosten || ''}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, kosten: e.target.value }))}
+                    disabled={!isEditing}
+                  />
+                </Box>
+              </Box>
+              
+              {/* Zweite Zeile: Gesamtzahlung - Anzahlung = Restzahlung */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: 1, minWidth: 200 }}>
+                  <TextField
+                    fullWidth
+                    label="Gesamtzahlung (€)"
+                    type="number"
+                    value={editedEvent.kosten || ''}
+                    disabled
+                  />
+                </Box>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
+                  -
+                </Typography>
+                <Box sx={{ flex: 1, minWidth: 200 }}>
+                  <TextField
+                    fullWidth
+                    label="Anzahlung (€)"
+                    type="number"
+                    value={editedEvent.anzahlung || ''}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, anzahlung: e.target.value }))}
+                    disabled={!isEditing}
+                  />
+                </Box>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
+                  =
+                </Typography>
+                <Box sx={{ flex: 1, minWidth: 200 }}>
+                  <TextField
+                    fullWidth
+                    label="Restzahlung (€)"
+                    type="number"
+                    value={editedEvent.restzahlung || ''}
+                    disabled
+                  />
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Extras / Zusatzleistungen */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+            Extras / Zusatzleistungen
+          </Typography>
+          
+          <Box sx={{ 
+            p: 3, 
+            backgroundColor: 'background.paper',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            mb: 4
+          }}>
+            <FormGroup>
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.eingangsfeuerwerkBrautpaar || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, eingangsfeuerwerkBrautpaar: e.target.checked }))}
+                  />
+                }
+                label="Gold- & Eingangsfeuerwerk (2 Stück), 4× Bodennebel, 1. Tanz Feuerwerk – 300 €"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.helikopterlandung || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, helikopterlandung: e.target.checked }))}
+                  />
+                }
+                label="Helikopterlandung auf Parkplatz – 2.000 €"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.helikopterlandung || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, helikopterlandung: e.target.checked }))}
+                  />
+                }
+                label="Feuerwerk beim Eingang, 1. Tanz, Kuchen – 1.000 €"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.obstKuchenbuffetTatli || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, obstKuchenbuffetTatli: e.target.checked }))}
+                  />
+                }
+                label="Dekor 'Vintage' – 400 € (inkl. Silbervasen & Kerzen)"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.cigkoefteTischservice || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, cigkoefteTischservice: e.target.checked }))}
+                  />
+                }
+                label="Dekor 'Platin' – 600 € (inkl. 9 Kerzenständer & Vasen)"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.obstKuchenbuffetTatli || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, obstKuchenbuffetTatli: e.target.checked }))}
+                  />
+                }
+                label="Obst- & Kuchenbuffet inkl. Tatlı – 1.500 € (max. 300 Pers.)"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.suppeHauptgang || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, suppeHauptgang: e.target.checked }))}
+                  />
+                }
+                label="Meze-Buffet mit Hauptgang – 1.250 €, je 100 Pers. extra +150 €"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.cigkoefteTischservice || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, cigkoefteTischservice: e.target.checked }))}
+                  />
+                }
+                label="Çiğköfte (Tischservice) für 1.000 Personen – 1.500 €, +150 €/weitere 100 Pers."
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.cocktailEmpfang || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, cocktailEmpfang: e.target.checked }))}
+                  />
+                }
+                label="Vegetarisches Buffet (4 Sorten Menü) – 500 €"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.suppeHauptgang || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, suppeHauptgang: e.target.checked }))}
+                  />
+                }
+                label="Suppe vor Hauptgang (Tischservice) – 2.100 € für 700 Pers."
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.cocktailEmpfang || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, cocktailEmpfang: e.target.checked }))}
+                  />
+                }
+                label="Cocktail-Empfang (alkoholfrei, 2 Std., max. 1.000 Pers.) – 1.200 €"
+              />
+            </FormGroup>
+          </Box>
+
+          {/* Hinweise */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+            Hinweise
+          </Typography>
+          
+          <Alert severity="warning" sx={{ mb: 4 }}>
+            <Typography variant="body2" component="div">
+              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                <li>Kein Vorsteuerabzug möglich.</li>
+                <li>Bei Absage durch den Kunden (auch bei Todesfällen) wird die Anzahlung nicht erstattet.</li>
+                <li>Veranstalter kann bei Absage Strafzahlungen verlangen.</li>
+                <li>Höhere Gewalt kann zur Absage führen.</li>
+                <li>Mieter muss selbst eine Eventversicherung (z. B. Hansa Merkur) abschließen.</li>
+              </ul>
+            </Typography>
+          </Alert>
+
+          {/* Datum & Unterschrift */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+            Datum & Unterschrift
+          </Typography>
+          
+          <TextField
+            fullWidth
+            label="Unterschrift"
+            multiline
+            rows={3}
+            value={editedEvent.signature || ''}
+            onChange={(e) => setEditedEvent(prev => ({ ...prev, signature: e.target.value }))}
+            disabled={!isEditing}
+            placeholder="Hier können Sie Ihre Unterschrift eingeben oder Notizen hinzufügen..."
+          />
 
           {/* Kunden-Präferenzen */}
           <Typography variant="subtitle1" gutterBottom>

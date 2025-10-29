@@ -132,160 +132,126 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
         </Box>
 
         <Box sx={{ pt: 1 }}>
-          {/* Basic Customer Information */}
+          {/* Persönliche Kundeninformationen */}
           <Typography variant="h6" gutterBottom>
-            Grundinformationen
+            Persönliche Kundeninformationen
           </Typography>
 
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Kundenname"
-                value={editedCustomer.name}
-                onChange={(e) => setEditedCustomer(prev => ({ ...prev, name: e.target.value }))}
-                disabled={!isEditing}
-              />
-            </Box>
-
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="E-Mail"
-                type="email"
-                value={editedCustomer.email}
-                onChange={(e) => setEditedCustomer(prev => ({ ...prev, email: e.target.value }))}
-                disabled={!isEditing}
-              />
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Telefon"
-                value={editedCustomer.phone}
-                onChange={(e) => setEditedCustomer(prev => ({ ...prev, phone: e.target.value }))}
-                disabled={!isEditing}
-              />
-            </Box>
-
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Ansprechpartner"
-                value={editedCustomer.contactPerson || ''}
-                onChange={(e) => setEditedCustomer(prev => ({ ...prev, contactPerson: e.target.value }))}
-                disabled={!isEditing}
-              />
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Adresse"
-                value={editedCustomer.address}
-                onChange={(e) => setEditedCustomer(prev => ({ ...prev, address: e.target.value }))}
-                disabled={!isEditing}
-              />
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Firma"
-                value={editedCustomer.company || ''}
-                onChange={(e) => setEditedCustomer(prev => ({ ...prev, company: e.target.value }))}
-                disabled={!isEditing}
-              />
-            </Box>
-
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Website"
-                value={editedCustomer.website || ''}
-                onChange={(e) => setEditedCustomer(prev => ({ ...prev, website: e.target.value }))}
-                disabled={!isEditing}
-              />
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="USt-IdNr."
-                value={editedCustomer.vatNumber || ''}
-                onChange={(e) => setEditedCustomer(prev => ({ ...prev, vatNumber: e.target.value }))}
-                disabled={!isEditing}
-              />
-            </Box>
-
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Geburtstag"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={editedCustomer.birthday || ''}
-                onChange={(e) => setEditedCustomer(prev => ({ ...prev, birthday: e.target.value }))}
-                disabled={!isEditing}
-              />
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: 250 }}>
-              <TextField
-                fullWidth
-                label="Jahrestag"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={editedCustomer.anniversary || ''}
-                onChange={(e) => setEditedCustomer(prev => ({ ...prev, anniversary: e.target.value }))}
-                disabled={!isEditing}
-              />
-            </Box>
-          </Box>
-
-          {/* Kunden-Tags */}
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+            gap: 3, 
+            mb: 4,
+            p: 3,
+            backgroundColor: 'background.paper',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
             <TextField
               fullWidth
-              label="Tags (Komma-getrennt)"
-              value={editedCustomer.tags.join(', ')}
-              onChange={(e) => setEditedCustomer(prev => ({ 
-                ...prev, 
-                tags: e.target.value.split(',').map(t => t.trim()).filter(t => t)
-              }))}
+              label="Vorname"
+              value={editedCustomer.name.split(' ')[0] || ''}
+              onChange={(e) => {
+                const lastName = editedCustomer.name.split(' ').slice(1).join(' ') || '';
+                setEditedCustomer(prev => ({ 
+                  ...prev, 
+                  name: `${e.target.value} ${lastName}`.trim() 
+                }));
+              }}
               disabled={!isEditing}
-              helperText="Mehrere Tags mit Komma trennen."
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
             />
-          </Box>
-
-          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Nachname"
+              value={editedCustomer.name.split(' ').slice(1).join(' ') || ''}
+              onChange={(e) => {
+                const firstName = editedCustomer.name.split(' ')[0] || '';
+                setEditedCustomer(prev => ({ 
+                  ...prev, 
+                  name: `${firstName} ${e.target.value}`.trim() 
+                }));
+              }}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="E-Mail"
+              type="email"
+              value={editedCustomer.email}
+              onChange={(e) => setEditedCustomer(prev => ({ ...prev, email: e.target.value }))}
+              disabled={!isEditing}
+              required
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Telefon"
+              value={editedCustomer.phone}
+              onChange={(e) => setEditedCustomer(prev => ({ ...prev, phone: e.target.value }))}
+              disabled={!isEditing}
+              required
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Adresse"
+              value={editedCustomer.address}
+              onChange={(e) => setEditedCustomer(prev => ({ ...prev, address: e.target.value }))}
+              disabled={!isEditing}
+              required
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
             <TextField
               fullWidth
               label="Notizen"
-              multiline
-              rows={3}
               value={editedCustomer.notes || ''}
               onChange={(e) => setEditedCustomer(prev => ({ ...prev, notes: e.target.value }))}
               disabled={!isEditing}
+              multiline
+              rows={2}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
             />
           </Box>
 
-          {/* Events */}
+          {/* Eventhistorie */}
           {customerEvents.length > 0 && (
             <Box sx={{ mt: 4 }}>
               <Typography variant="h6" gutterBottom>
-                Events ({customerEvents.length})
+                Eventhistorie ({customerEvents.length})
               </Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {customerEvents.map((event) => (
@@ -305,19 +271,38 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                     }}
                   >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box>
+                      <Box sx={{ flex: 1 }}>
                         <Typography variant="subtitle1" fontWeight="bold">
                           {event.title}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {new Date(event.date).toLocaleDateString('de-DE')} - {event.time}
                         </Typography>
+                        {event.kosten && (
+                          <Typography variant="body2" color="primary.main" sx={{ mt: 0.5 }}>
+                            Gesamtkosten: {event.kosten} €
+                          </Typography>
+                        )}
+                        {event.guestCount && (
+                          <Typography variant="body2" color="text.secondary">
+                            Gäste: {event.guestCount}
+                          </Typography>
+                        )}
                       </Box>
-                      <Chip
-                        label={getStatusLabel(event.status)}
-                        color={getStatusColor(event.status)}
-                        size="small"
-                      />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip
+                          label={getStatusLabel(event.status)}
+                          color={getStatusColor(event.status)}
+                          size="small"
+                        />
+                        {event.veranstaltungsart && (
+                          <Chip
+                            label={event.veranstaltungsart}
+                            variant="outlined"
+                            size="small"
+                          />
+                        )}
+                      </Box>
                     </Box>
                   </Paper>
                 ))}
