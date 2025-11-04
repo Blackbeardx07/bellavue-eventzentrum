@@ -238,17 +238,27 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
             />
             <TextField
               fullWidth
-              label="Adresse"
-              value={editedEvent.address || ''}
-              onChange={(e) => setEditedEvent(prev => ({ ...prev, address: e.target.value }))}
+              label="Straße & Hausnummer"
+              value={(editedEvent as any).streetAndNumber || editedEvent.address || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, streetAndNumber: e.target.value, address: e.target.value } as any))}
               disabled={!isEditing}
               variant="outlined"
             />
             <TextField
               fullWidth
               label="PLZ & Ort"
-              value={editedEvent.addressCity || ''}
-              onChange={(e) => setEditedEvent(prev => ({ ...prev, addressCity: e.target.value }))}
+              value={(editedEvent as any).zipAndCity || editedEvent.addressCity || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, zipAndCity: e.target.value, addressCity: e.target.value } as any))}
+              disabled={!isEditing}
+              variant="outlined"
+            />
+            <TextField
+              fullWidth
+              label="Notizen"
+              multiline
+              rows={3}
+              value={editedEvent.notes || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, notes: e.target.value }))}
               disabled={!isEditing}
               variant="outlined"
             />
@@ -298,8 +308,24 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
             <TextField
               fullWidth
               label="Wochentag"
-              value={editedEvent.wochentag || ''}
-              onChange={(e) => setEditedEvent(prev => ({ ...prev, wochentag: e.target.value }))}
+              value={editedEvent.wochentag || (editedEvent as any).weekday || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, wochentag: e.target.value, weekday: e.target.value } as any))}
+              disabled={!isEditing}
+              variant="outlined"
+            />
+            <TextField
+              fullWidth
+              label="Event Datum"
+              value={(editedEvent as any).eventDate || editedEvent.date || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, eventDate: e.target.value, date: e.target.value } as any))}
+              disabled={!isEditing}
+              variant="outlined"
+            />
+            <TextField
+              fullWidth
+              label="Event Saal"
+              value={(editedEvent as any).eventHall || editedEvent.room || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, eventHall: e.target.value, room: e.target.value } as any))}
               disabled={!isEditing}
               variant="outlined"
             />
@@ -325,8 +351,17 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
               fullWidth
               label="Service (€)"
               type="number"
-              value={editedEvent.service || ''}
-              onChange={(e) => setEditedEvent(prev => ({ ...prev, service: e.target.value }))}
+              value={editedEvent.service || (editedEvent as any).serviceKosten || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, service: e.target.value, serviceKosten: e.target.value } as any))}
+              disabled={!isEditing}
+              variant="outlined"
+            />
+            <TextField
+              fullWidth
+              label="Service Kosten (€)"
+              type="number"
+              value={(editedEvent as any).serviceKosten || editedEvent.service || ''}
+              onChange={(e) => setEditedEvent(prev => ({ ...prev, serviceKosten: e.target.value, service: e.target.value } as any))}
               disabled={!isEditing}
               variant="outlined"
             />
@@ -434,6 +469,22 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
           <Typography variant="h6" gutterBottom sx={{ mt: 4, fontWeight: 'bold', borderBottom: '2px solid #1976d2', pb: 1 }}>
             Service-Angebot Leistungen
           </Typography>
+          
+          {/* Service-Leistungen als Array anzeigen */}
+          {(editedEvent as any).serviceLeistungen && Array.isArray((editedEvent as any).serviceLeistungen) && (editedEvent as any).serviceLeistungen.length > 0 && (
+            <Box sx={{ mb: 3, p: 2, backgroundColor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', mb: 1 }}>
+                Ausgewählte Leistungen:
+              </Typography>
+              <Box component="ul" sx={{ m: 0, pl: 3 }}>
+                {((editedEvent as any).serviceLeistungen as string[]).map((leistung, index) => (
+                  <li key={index}>
+                    <Typography variant="body2">{leistung}</Typography>
+                  </li>
+                ))}
+              </Box>
+            </Box>
+          )}
           
           <Box sx={{ 
             p: 3, 

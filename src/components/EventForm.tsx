@@ -22,6 +22,9 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import type { Event, Customer } from '../types';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { customerService } from '../firebase/firestore';
 
 interface EventFormProps {
   open: boolean;
@@ -42,8 +45,8 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
     email: '',
     phone: '',
     mobile: '',
-    address: '',
-    addressCity: '',
+    streetAndNumber: '',
+    zipAndCity: '',
     addressBride: '',
     addressGroom: '',
     nationalityBride: '',
@@ -206,47 +209,369 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
     handleClose();
   };
 
-  const handleSubmit = () => {
-    // Customer-Objekt aus persönlichen Kundeninformationen
-    const customerName = `${formData.firstName} ${formData.lastName}`.trim();
-    const newCustomer: Omit<Customer, 'id'> = {
-      name: customerName,
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      company: formData.company,
-      email: formData.email,
-      phone: formData.phone,
-      mobile: formData.mobile,
-      address: formData.addressBride || formData.addressGroom || '', // Verwende Braut- oder Bräutigam-Adresse
-      addressBride: formData.addressBride,
-      addressGroom: formData.addressGroom,
-      nationalityBride: formData.nationalityBride,
-      nationalityGroom: formData.nationalityGroom,
-      ageBride: formData.ageBride,
-      ageGroom: formData.ageGroom,
-      events: [],
-      notes: formData.notes,
-      // Zusätzliche Felder für Service-Angebot
-      contactPerson: customerName,
-      budget: formData.gesamtpreis,
-      guestCount: formData.personenanzahl,
-      specialRequirements: formData.notes,
-      preferences: {
-        catering: true,
-        decoration: true,
-        music: true,
-        photography: true
-      }
-    };
+  // Funktion zum Speichern des Events direkt in Firebase
+  const handleEventSubmit = async (customerId: string) => {
+    try {
+      // Services in Arrays gruppieren
+      const services = {
+        tischaufstellung: [
+          formData.rundeTische ? 'Runde Tische' : '',
+          formData.eckigeTische ? 'Eckige Tische' : ''
+        ].filter(Boolean),
+        essenCatering: [
+          formData.etSoteHaehnchengeschnetzeltes ? 'Et Sote / Hähnchengeschnetzeltes' : '',
+          formData.tavukSoteRindergulasch ? 'Tavuk Sote / Rindergulasch' : '',
+          formData.halbesHaehnchen ? 'Halbes Hähnchen' : '',
+          formData.reis ? 'Reis' : '',
+          formData.gemuese ? 'Gemüse' : '',
+          formData.salatJahreszeit ? 'Salat (Jahreszeit)' : '',
+          formData.pommesSalzkartoffel ? 'Pommes / Salzkartoffel' : '',
+          formData.antipastiVorspeisenBrot ? 'Antipasti / Vorspeisen / Brot' : '',
+          formData.knabbereienCerez ? 'Knabbereien / Cerez' : '',
+          formData.obstschale ? 'Obstschale' : '',
+          formData.nachtischBaklava ? 'Nachtisch / Baklava' : ''
+        ].filter(Boolean),
+        getraenke: [
+          formData.teeKaffeeservice ? 'Tee & Kaffee Service' : '',
+          formData.softgetraenkeMineralwasser ? 'Softgetränke / Mineralwasser' : ''
+        ].filter(Boolean),
+        torte: [
+          formData.hochzeitstorte3Etagen ? 'Hochzeitstorte 3 Etagen' : '',
+          formData.hochzeitstorteFlach ? 'Hochzeitstorte Flach' : ''
+        ].filter(Boolean),
+        service: [
+          formData.standardDekoration ? 'Standard Dekoration' : '',
+          formData.serviceAllgemein ? 'Service Allgemein' : '',
+          formData.bandDj ? 'Band / DJ' : ''
+        ].filter(Boolean),
+        videoFotografie: [
+          formData.videoKameraKranHDOhne ? 'Video Kamera Kran HD (ohne)' : '',
+          formData.videoKameraKranHDMit ? 'Video Kamera Kran HD (mit)' : '',
+          formData.videoKameraKranHDMitBrautigam ? 'Video Kamera Kran HD (mit Bräutigam)' : '',
+          formData.fotoshootingUSB ? 'Fotoshooting USB' : '',
+          formData.weddingStoryClip ? 'Wedding Story Clip' : '',
+          formData.fotoalbum ? 'Fotoalbum' : ''
+        ].filter(Boolean),
+        musik: [
+          formData.davulZurna4Stunden ? 'Davul & Zurna 4 Stunden' : '',
+          formData.davulZurnaMitBrautabholung ? 'Davul & Zurna mit Brautabholung' : ''
+        ].filter(Boolean),
+        dekoEffekte: [
+          formData.saeulenabgrenzungBlumenFeuerwerk ? 'Säulenabgrenzung Blumen / Feuerwerk' : '',
+          formData.saeulenabgrenzungKuchenAnschneiden ? 'Säulenabgrenzung Kuchen Anschneiden' : '',
+          formData.eingangsfeuerwerkBrautpaar ? 'Eingangsfeuerwerk Brautpaar' : ''
+        ].filter(Boolean),
+        extras: [
+          formData.helikopterlandung ? 'Helikopterlandung' : '',
+          formData.obstKuchenbuffetTatli ? 'Obst & Kuchenbuffet / Tatlı' : '',
+          formData.cigkoefteTischservice ? 'Çiğköfte Tischservice' : '',
+          formData.suppeHauptgang ? 'Suppe & Hauptgang' : '',
+          formData.cocktailEmpfang ? 'Cocktail Empfang' : ''
+        ].filter(Boolean)
+      };
 
-    // Event-Objekt
-    const newEvent: Omit<Event, 'id'> = {
+      // Services als Array für serviceLeistungen
+      const serviceLeistungenArray: string[] = [
+        ...services.tischaufstellung,
+        ...services.essenCatering,
+        ...services.getraenke,
+        ...services.torte,
+        ...services.service,
+        ...services.videoFotografie,
+        ...services.musik,
+        ...services.dekoEffekte,
+        ...services.extras
+      ];
+
+      // Event-Hall aus eventsaal1 und eventsaal2 zusammenstellen
+      const eventHallArray: string[] = [];
+      if (formData.eventsaal1) eventHallArray.push('Event Saal -1-');
+      if (formData.eventsaal2) eventHallArray.push('Event Saal -2-');
+      const eventHall = eventHallArray.join(', ');
+
+      // Event-Datenobjekt für Firebase erstellen (ALLE Felder)
+      const eventData: any = {
+        // Basis-Felder
+        title: `${formData.firstName} ${formData.lastName}`.trim() || 'Unbekannt',
+        date: formData.eventDate.toISOString().split('T')[0] || '',
+        time: '16:00-24:00',
+        room: eventHall || '',
+        status: 'planned',
+        customerId: customerId,
+        customer: `${formData.firstName} ${formData.lastName}`.trim() || 'Unbekannt',
+        
+        // Customer fields
+        firstName: formData.firstName || '',
+        lastName: formData.lastName || '',
+        company: formData.company || '',
+        email: formData.email || '',
+        phone: formData.phone || '',
+        mobile: formData.mobile || '',
+        mobileNumber: formData.mobile || '',
+        street: formData.streetAndNumber || '',
+        streetAndNumber: formData.streetAndNumber || '',
+        zipCity: formData.zipAndCity || '',
+        zipAndCity: formData.zipAndCity || '',
+        notes: formData.notes || '',
+        
+        // Event fields - PRIMARY NAMES
+        eventType: formData.veranstaltungsart || '',
+        veranstaltungsart: formData.veranstaltungsart || '',
+        guestCount: Number(formData.personenanzahl) || 0,
+        personenanzahl: formData.personenanzahl || '',
+        weekday: formData.wochentag || '',
+        wochentag: formData.wochentag || '',
+        eventDate: formData.eventDate.toISOString().split('T')[0] || '',
+        eventHall: eventHall || '',
+        deposit: Number(formData.anzahlung) || 0,
+        anzahlung: formData.anzahlung || '',
+        totalPrice: Number(formData.gesamtpreis) || 0,
+        gesamtpreis: formData.gesamtpreis || '',
+        servicePrice: Number(formData.service) || 0,
+        service: formData.service || '',
+        serviceKosten: formData.service || '',
+        hallPrice: Number(formData.saalmiete) || 0,
+        saalmiete: formData.saalmiete || '',
+        remainingPayment: Number(formData.restzahlung) || 0,
+        restzahlung: formData.restzahlung || '',
+        acceptedOffer: formData.angebotAngenommen === 'ja' || formData.angebotAngenommen === 'true' || false,
+        angebotAngenommen: formData.angebotAngenommen || '',
+        customerSignatureDate: formData.datumUnterschriftKunde || '',
+        datumUnterschriftKunde: formData.datumUnterschriftKunde || '',
+        bellavueSignatureDate: formData.datumUnterschriftBellavue || '',
+        datumUnterschriftBellavue: formData.datumUnterschriftBellavue || '',
+        
+        // Services
+        serviceLeistungen: serviceLeistungenArray,
+        services: services,
+        
+        // Legacy fields for compatibility
+        offerTotal: Number(formData.angebotssumme) || 0,
+        angebotssumme: formData.angebotssumme || '',
+        rentalFee: Number(formData.saalmiete) || 0,
+        serviceFee: Number(formData.service) || 0,
+        
+        // Brautpaar fields
+        addressBride: formData.addressBride || '',
+        addressGroom: formData.addressGroom || '',
+        nationalityBride: formData.nationalityBride || '',
+        nationalityGroom: formData.nationalityGroom || '',
+        ageBride: formData.ageBride || '',
+        ageGroom: formData.ageGroom || '',
+        
+        // Event details
+        eventsaal1: formData.eventsaal1 || false,
+        eventsaal2: formData.eventsaal2 || false,
+        veranstaltungsdatum: formData.eventDate.toISOString().split('T')[0] || '',
+        
+        // All service checkboxes
+        rundeTische: formData.rundeTische || false,
+        eckigeTische: formData.eckigeTische || false,
+        etSoteHaehnchengeschnetzeltes: formData.etSoteHaehnchengeschnetzeltes || false,
+        tavukSoteRindergulasch: formData.tavukSoteRindergulasch || false,
+        halbesHaehnchen: formData.halbesHaehnchen || false,
+        reis: formData.reis || false,
+        gemuese: formData.gemuese || false,
+        salatJahreszeit: formData.salatJahreszeit || false,
+        pommesSalzkartoffel: formData.pommesSalzkartoffel || false,
+        antipastiVorspeisenBrot: formData.antipastiVorspeisenBrot || false,
+        knabbereienCerez: formData.knabbereienCerez || false,
+        obstschale: formData.obstschale || false,
+        nachtischBaklava: formData.nachtischBaklava || false,
+        teeKaffeeservice: formData.teeKaffeeservice || false,
+        softgetraenkeMineralwasser: formData.softgetraenkeMineralwasser || false,
+        hochzeitstorte3Etagen: formData.hochzeitstorte3Etagen || false,
+        hochzeitstorteFlach: formData.hochzeitstorteFlach || false,
+        standardDekoration: formData.standardDekoration || false,
+        serviceAllgemein: formData.serviceAllgemein || false,
+        bandDj: formData.bandDj || false,
+        videoKameraKranHDOhne: formData.videoKameraKranHDOhne || false,
+        videoKameraKranHDMit: formData.videoKameraKranHDMit || false,
+        videoKameraKranHDMitBrautigam: formData.videoKameraKranHDMitBrautigam || false,
+        fotoshootingUSB: formData.fotoshootingUSB || false,
+        weddingStoryClip: formData.weddingStoryClip || false,
+        fotoalbum: formData.fotoalbum || false,
+        davulZurna4Stunden: formData.davulZurna4Stunden || false,
+        davulZurnaMitBrautabholung: formData.davulZurnaMitBrautabholung || false,
+        saeulenabgrenzungBlumenFeuerwerk: formData.saeulenabgrenzungBlumenFeuerwerk || false,
+        saeulenabgrenzungKuchenAnschneiden: formData.saeulenabgrenzungKuchenAnschneiden || false,
+        eingangsfeuerwerkBrautpaar: formData.eingangsfeuerwerkBrautpaar || false,
+        helikopterlandung: formData.helikopterlandung || false,
+        obstKuchenbuffetTatli: formData.obstKuchenbuffetTatli || false,
+        cigkoefteTischservice: formData.cigkoefteTischservice || false,
+        suppeHauptgang: formData.suppeHauptgang || false,
+        cocktailEmpfang: formData.cocktailEmpfang || false,
+        signature: formData.signature || '',
+        
+        createdAt: serverTimestamp()
+      };
+
+      // Event in Firebase speichern
+      const docRef = await addDoc(collection(db, 'events'), eventData);
+      console.log('Event erfolgreich gespeichert mit ID:', docRef.id);
+      
+      return docRef.id;
+    } catch (error) {
+      console.error('Fehler beim Speichern des Events in Firebase:', error);
+      throw error;
+    }
+  };
+
+  // Hilfsfunktion zum Zusammenfügen von Adressfeldern
+  const composeAddress = (streetAndNumber?: string, zipAndCity?: string) =>
+    [streetAndNumber?.trim(), zipAndCity?.trim()].filter(Boolean).join(', ');
+
+  const handleSubmit = async () => {
+    try {
+      // Services in Arrays gruppieren (wird für Firebase und newEvent benötigt)
+      const services = {
+        tischaufstellung: [
+          formData.rundeTische ? 'Runde Tische' : '',
+          formData.eckigeTische ? 'Eckige Tische' : ''
+        ].filter(Boolean),
+        essenCatering: [
+          formData.etSoteHaehnchengeschnetzeltes ? 'Et Sote / Hähnchengeschnetzeltes' : '',
+          formData.tavukSoteRindergulasch ? 'Tavuk Sote / Rindergulasch' : '',
+          formData.halbesHaehnchen ? 'Halbes Hähnchen' : '',
+          formData.reis ? 'Reis' : '',
+          formData.gemuese ? 'Gemüse' : '',
+          formData.salatJahreszeit ? 'Salat (Jahreszeit)' : '',
+          formData.pommesSalzkartoffel ? 'Pommes / Salzkartoffel' : '',
+          formData.antipastiVorspeisenBrot ? 'Antipasti / Vorspeisen / Brot' : '',
+          formData.knabbereienCerez ? 'Knabbereien / Cerez' : '',
+          formData.obstschale ? 'Obstschale' : '',
+          formData.nachtischBaklava ? 'Nachtisch / Baklava' : ''
+        ].filter(Boolean),
+        getraenke: [
+          formData.teeKaffeeservice ? 'Tee & Kaffee Service' : '',
+          formData.softgetraenkeMineralwasser ? 'Softgetränke / Mineralwasser' : ''
+        ].filter(Boolean),
+        torte: [
+          formData.hochzeitstorte3Etagen ? 'Hochzeitstorte 3 Etagen' : '',
+          formData.hochzeitstorteFlach ? 'Hochzeitstorte Flach' : ''
+        ].filter(Boolean),
+        service: [
+          formData.standardDekoration ? 'Standard Dekoration' : '',
+          formData.serviceAllgemein ? 'Service Allgemein' : '',
+          formData.bandDj ? 'Band / DJ' : ''
+        ].filter(Boolean),
+        videoFotografie: [
+          formData.videoKameraKranHDOhne ? 'Video Kamera Kran HD (ohne)' : '',
+          formData.videoKameraKranHDMit ? 'Video Kamera Kran HD (mit)' : '',
+          formData.videoKameraKranHDMitBrautigam ? 'Video Kamera Kran HD (mit Bräutigam)' : '',
+          formData.fotoshootingUSB ? 'Fotoshooting USB' : '',
+          formData.weddingStoryClip ? 'Wedding Story Clip' : '',
+          formData.fotoalbum ? 'Fotoalbum' : ''
+        ].filter(Boolean),
+        musik: [
+          formData.davulZurna4Stunden ? 'Davul & Zurna 4 Stunden' : '',
+          formData.davulZurnaMitBrautabholung ? 'Davul & Zurna mit Brautabholung' : ''
+        ].filter(Boolean),
+        dekoEffekte: [
+          formData.saeulenabgrenzungBlumenFeuerwerk ? 'Säulenabgrenzung Blumen / Feuerwerk' : '',
+          formData.saeulenabgrenzungKuchenAnschneiden ? 'Säulenabgrenzung Kuchen Anschneiden' : '',
+          formData.eingangsfeuerwerkBrautpaar ? 'Eingangsfeuerwerk Brautpaar' : ''
+        ].filter(Boolean),
+        extras: [
+          formData.helikopterlandung ? 'Helikopterlandung' : '',
+          formData.obstKuchenbuffetTatli ? 'Obst & Kuchenbuffet / Tatlı' : '',
+          formData.cigkoefteTischservice ? 'Çiğköfte Tischservice' : '',
+          formData.suppeHauptgang ? 'Suppe & Hauptgang' : '',
+          formData.cocktailEmpfang ? 'Cocktail Empfang' : ''
+        ].filter(Boolean)
+      };
+
+      // Customer-Objekt aus persönlichen Kundeninformationen
+      // Nur die 8 angeforderten Felder aus dem Formular übernehmen
+      const customerName = `${formData.firstName} ${formData.lastName}`.trim();
+      
+      const newCustomer: Omit<Customer, 'id'> = {
+        // Die 8 benötigten Felder aus dem Formular
+        firstName: formData.firstName || '',
+        lastName: formData.lastName || '',
+        email: formData.email || '',
+        phone: formData.phone || '',
+        mobile: formData.mobile || '',
+        streetAndNumber: formData.streetAndNumber || '',
+        zipAndCity: formData.zipAndCity || '',
+        notes: formData.notes || '',
+        // Pflichtfelder für Interface (minimal gesetzt)
+        name: customerName,
+        company: formData.company || '',
+        address: composeAddress(formData.streetAndNumber, formData.zipAndCity),
+        addressBride: '',
+        addressGroom: '',
+        nationalityBride: '',
+        nationalityGroom: '',
+        ageBride: '',
+        ageGroom: '',
+        events: []
+      };
+
+      // Customer in Firebase speichern
+      let customerId: string;
+      try {
+        console.log('Speichere Customer in Firebase...', newCustomer);
+        customerId = await customerService.createCustomer(newCustomer);
+        console.log('Customer erfolgreich in Firebase gespeichert mit ID:', customerId);
+      } catch (firebaseError) {
+        console.warn('Firebase-Speicherung fehlgeschlagen, verwende localStorage als Fallback:', firebaseError);
+        // Fallback: Customer lokal speichern
+        customerId = Date.now().toString() + Math.random().toString(36).substr(2, 6);
+        const customerWithId: Customer = { ...newCustomer, id: customerId };
+        const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
+        existingCustomers.push(customerWithId);
+        localStorage.setItem('bellavue-customers', JSON.stringify(existingCustomers));
+        console.log('Customer lokal gespeichert mit ID:', customerId);
+      }
+
+      // Event direkt in Firebase speichern
+      let eventId: string;
+      try {
+        console.log('Speichere Event in Firebase...');
+        eventId = await handleEventSubmit(customerId);
+        console.log('Event erfolgreich in Firebase gespeichert mit ID:', eventId);
+      } catch (firebaseError) {
+        console.warn('Firebase-Event-Speicherung fehlgeschlagen, verwende localStorage als Fallback:', firebaseError);
+        // Fallback: Event lokal speichern (wird später von App.tsx handleNewEvent gemacht)
+        eventId = '';
+      }
+
+      // Services als Array für serviceLeistungen
+      const serviceLeistungenArray: string[] = [
+        ...services.tischaufstellung,
+        ...services.essenCatering,
+        ...services.getraenke,
+        ...services.torte,
+        ...services.service,
+        ...services.videoFotografie,
+        ...services.musik,
+        ...services.dekoEffekte,
+        ...services.extras
+      ];
+
+      // Event-Hall aus eventsaal1 und eventsaal2 zusammenstellen
+      const eventHallArray: string[] = [];
+      if (formData.eventsaal1) eventHallArray.push('Event Saal -1-');
+      if (formData.eventsaal2) eventHallArray.push('Event Saal -2-');
+      const eventHall = eventHallArray.join(', ');
+
+      // Event-Objekt (für App.tsx Kompatibilität)
+      const newEvent: Omit<Event, 'id'> & {
+        streetAndNumber?: string;
+        zipAndCity?: string;
+        eventDate?: string;
+        weekday?: string;
+        eventHall?: string;
+        serviceKosten?: string;
+        serviceLeistungen?: string[];
+      } = {
       title: `${customerName} - ${formData.veranstaltungsart}`,
       date: formData.eventDate.toISOString().split('T')[0],
       time: '16:00-24:00',
-      room: `${formData.eventsaal1 ? 'Event Saal -1-' : ''}${formData.eventsaal1 && formData.eventsaal2 ? ', ' : ''}${formData.eventsaal2 ? 'Event Saal -2-' : ''}`,
+      room: eventHall,
       status: 'planned',
-      customerId: '',
+      customerId: customerId,
       customer: customerName,
       description: `Service-Angebot Details:\nVeranstaltungsart: ${formData.veranstaltungsart}\nPersonenanzahl: ${formData.personenanzahl}\nWochentag: ${formData.wochentag}\nAngebotssumme: ${formData.angebotssumme}€\nSaalmiete: ${formData.saalmiete}€\nService: ${formData.service}€\nGesamtpreis: ${formData.gesamtpreis}€\nAnzahlung: ${formData.anzahlung}€\nRestzahlung: ${formData.restzahlung}€`,
       files: [],
@@ -254,14 +579,18 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
       comments: [],
       
       // ALLE persönlichen Kundeninformationen aus Service-Angebot
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      company: formData.company,
-      email: formData.email,
-      phone: formData.phone,
-      mobile: formData.mobile,
-      address: formData.address || formData.addressBride || formData.addressGroom || '',
-      addressCity: formData.addressCity,
+      firstName: formData.firstName || '',
+      lastName: formData.lastName || '',
+      company: formData.company || '',
+      email: formData.email || '',
+      phone: formData.phone || '',
+      mobile: formData.mobile || '',
+      notes: formData.notes || '',
+      address: formData.streetAndNumber || formData.addressBride || formData.addressGroom || '',
+      addressCity: formData.zipAndCity,
+      // Zusätzliche Felder für EventDetail
+      streetAndNumber: formData.streetAndNumber || '',
+      zipAndCity: formData.zipAndCity || '',
       addressBride: formData.addressBride,
       addressGroom: formData.addressGroom,
       nationalityBride: formData.nationalityBride,
@@ -272,20 +601,26 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
       // Service-Angebot Felder
       guestCount: formData.personenanzahl,
       kosten: formData.gesamtpreis,
-      // Event Details
-      personenanzahl: formData.personenanzahl,
-      veranstaltungsart: formData.veranstaltungsart,
+      // Event Details - DEUTSCHE FELDNAMEN
+      personenanzahl: formData.personenanzahl || '',
+      veranstaltungsart: formData.veranstaltungsart || '',
+      eventDate: formData.eventDate.toISOString().split('T')[0] || '',
+      weekday: formData.wochentag || '',
+      eventHall: eventHall,
       eventsaal1: formData.eventsaal1,
       eventsaal2: formData.eventsaal2,
       veranstaltungsdatum: formData.eventDate.toISOString().split('T')[0],
       wochentag: formData.wochentag,
-      // Kostenübersicht
-      angebotssumme: formData.angebotssumme,
-      saalmiete: formData.saalmiete,
-      service: formData.service,
-      gesamtpreis: formData.gesamtpreis,
-      anzahlung: formData.anzahlung,
-      restzahlung: formData.restzahlung,
+      // Kostenübersicht - DEUTSCHE FELDNAMEN
+      angebotssumme: formData.angebotssumme || '',
+      saalmiete: formData.saalmiete || '',
+      service: formData.service || '',
+      serviceKosten: formData.service || '',
+      gesamtpreis: formData.gesamtpreis || '',
+      anzahlung: formData.anzahlung || '',
+      restzahlung: formData.restzahlung || '',
+      // Service-Leistungen als Array
+      serviceLeistungen: serviceLeistungenArray,
       // Tischaufstellung
       rundeTische: formData.rundeTische,
       eckigeTische: formData.eckigeTische,
@@ -338,9 +673,18 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
       datumUnterschriftBellavue: formData.datumUnterschriftBellavue
     };
 
-    // Daten sofort speichern, unabhängig von PDF-Aktion
-    onSubmit(newEvent, newCustomer);
-    setShowDownloadDialog(true);
+      // Daten sofort speichern, unabhängig von PDF-Aktion
+      onSubmit(newEvent, newCustomer);
+      
+      setShowDownloadDialog(true);
+    } catch (error) {
+      console.error('Fehler beim Speichern:', error);
+      console.error('Fehlerdetails:', {
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      alert(`Fehler beim Speichern des Events: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}. Bitte versuchen Sie es erneut.`);
+    }
   };
 
   const handleClose = () => {
@@ -352,8 +696,8 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
       email: '',
       phone: '',
       mobile: '',
-      address: '',
-      addressCity: '',
+      streetAndNumber: '',
+      zipAndCity: '',
       addressBride: '',
       addressGroom: '',
       nationalityBride: '',
@@ -541,7 +885,7 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
             />
             <TextField
               fullWidth
-                label="Mobil"
+                label="Mobilnummer"
                 value={formData.mobile}
                 onChange={(e) => setFormData(prev => ({ ...prev, mobile: e.target.value }))}
               variant="outlined"
@@ -552,57 +896,50 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
                 }
               }}
             />
+            <TextField
+              fullWidth
+                label="Straße & Hausnummer"
+                value={formData.streetAndNumber}
+                onChange={(e) => setFormData(prev => ({ ...prev, streetAndNumber: e.target.value }))}
+              variant="outlined"
+                placeholder="z.B. Musterstraße 123"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+                label="PLZ & Ort"
+                value={formData.zipAndCity}
+                onChange={(e) => setFormData(prev => ({ ...prev, zipAndCity: e.target.value }))}
+              variant="outlined"
+                placeholder="z.B. 12345 Musterstadt"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+                label="Notizen"
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              variant="outlined"
+              multiline
+              rows={3}
+              placeholder="Zusätzliche Informationen oder Notizen zum Kunden"
+              sx={{ 
+                gridColumn: { xs: '1', sm: '1 / -1' },
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
             </Box>
           </Box>
-
-          {/* Anschrift - immer sichtbar außer bei Hochzeit */}
-          {!formData.veranstaltungsart.toLowerCase().includes('hochzeit') && (
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'text.primary', fontWeight: 600 }}>
-                📍 Anschrift
-              </Typography>
-              <Box sx={{ 
-                display: 'grid', 
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                gap: 3, 
-                p: 3,
-                backgroundColor: 'background.paper',
-                borderRadius: 2,
-                border: '1px solid',
-                borderColor: 'divider',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-              }}>
-                <TextField
-                  fullWidth
-                  label="Straße & Hausnummer"
-                  value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  required
-                  variant="outlined"
-                  placeholder="z.B. Musterstraße 123"
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'background.default'
-                    }
-                  }}
-                />
-                <TextField
-                  fullWidth
-                  label="PLZ & Ort"
-                  value={formData.addressCity}
-                  onChange={(e) => setFormData(prev => ({ ...prev, addressCity: e.target.value }))}
-                  required
-                  variant="outlined"
-                  placeholder="z.B. 12345 Musterstadt"
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'background.default'
-                    }
-                  }}
-                />
-              </Box>
-            </Box>
-          )}
 
           {/* Event Details */}
           <Typography variant="h5" gutterBottom sx={{ mt: 2, mb: 3, color: 'primary.main', fontWeight: 'bold' }}>

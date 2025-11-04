@@ -152,12 +152,12 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
             <TextField
               fullWidth
               label="Vorname"
-              value={editedCustomer.name.split(' ')[0] || ''}
+              value={editedCustomer.firstName || ''}
               onChange={(e) => {
-                const lastName = editedCustomer.name.split(' ').slice(1).join(' ') || '';
                 setEditedCustomer(prev => ({ 
                   ...prev, 
-                  name: `${e.target.value} ${lastName}`.trim() 
+                  firstName: e.target.value,
+                  name: `${e.target.value} ${prev.lastName || ''}`.trim()
                 }));
               }}
               disabled={!isEditing}
@@ -171,12 +171,12 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
             <TextField
               fullWidth
               label="Nachname"
-              value={editedCustomer.name.split(' ').slice(1).join(' ') || ''}
+              value={editedCustomer.lastName || ''}
               onChange={(e) => {
-                const firstName = editedCustomer.name.split(' ')[0] || '';
                 setEditedCustomer(prev => ({ 
                   ...prev, 
-                  name: `${firstName} ${e.target.value}`.trim() 
+                  lastName: e.target.value,
+                  name: `${prev.firstName || ''} ${e.target.value}`.trim()
                 }));
               }}
               disabled={!isEditing}
@@ -189,9 +189,22 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
             />
             <TextField
               fullWidth
+              label="Firma"
+              value={editedCustomer.company || ''}
+              onChange={(e) => setEditedCustomer(prev => ({ ...prev, company: e.target.value }))}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
               label="E-Mail"
               type="email"
-              value={editedCustomer.email}
+              value={editedCustomer.email || ''}
               onChange={(e) => setEditedCustomer(prev => ({ ...prev, email: e.target.value }))}
               disabled={!isEditing}
               required
@@ -205,7 +218,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
             <TextField
               fullWidth
               label="Telefon"
-              value={editedCustomer.phone}
+              value={editedCustomer.phone || ''}
               onChange={(e) => setEditedCustomer(prev => ({ ...prev, phone: e.target.value }))}
               disabled={!isEditing}
               required
@@ -218,11 +231,36 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
             />
             <TextField
               fullWidth
-              label="Adresse"
-              value={editedCustomer.address}
-              onChange={(e) => setEditedCustomer(prev => ({ ...prev, address: e.target.value }))}
+              label="Mobilnummer"
+              value={editedCustomer.mobile || ''}
+              onChange={(e) => setEditedCustomer(prev => ({ ...prev, mobile: e.target.value }))}
               disabled={!isEditing}
-              required
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Straße & Hausnummer"
+              value={editedCustomer.streetAndNumber || ''}
+              onChange={(e) => setEditedCustomer(prev => ({ ...prev, streetAndNumber: e.target.value }))}
+              disabled={!isEditing}
+              variant="outlined"
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.default'
+                }
+              }}
+            />
+            <TextField
+              fullWidth
+              label="PLZ & Ort"
+              value={editedCustomer.zipAndCity || ''}
+              onChange={(e) => setEditedCustomer(prev => ({ ...prev, zipAndCity: e.target.value }))}
+              disabled={!isEditing}
               variant="outlined"
               sx={{ 
                 '& .MuiOutlinedInput-root': {
@@ -237,9 +275,10 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
               onChange={(e) => setEditedCustomer(prev => ({ ...prev, notes: e.target.value }))}
               disabled={!isEditing}
               multiline
-              rows={2}
+              rows={3}
               variant="outlined"
               sx={{ 
+                gridColumn: { xs: '1', sm: '1 / -1' },
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: 'background.default'
                 }

@@ -4,7 +4,8 @@ import { ThemeProvider } from '@mui/material/styles';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { de } from 'date-fns/locale';
-import { Box, Button, Typography, Paper, TextField, Alert, CssBaseline } from '@mui/material';
+import { Box, Button, Typography, Paper, TextField, Alert, CssBaseline, IconButton, InputAdornment } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import MainLayout from './layouts/MainLayout';
 import CalendarView from './pages/CalendarView';
 import EventList from './pages/EventList';
@@ -247,59 +248,135 @@ function App() {
   };
 
 
+  // Hilfsfunktion zum Zusammenfügen von Adressfeldern
+  const composeAddress = (streetAndNumber?: string, zipAndCity?: string) =>
+    [streetAndNumber?.trim(), zipAndCity?.trim()].filter(Boolean).join(', ');
+
   const handleNewEvent = async (newEvent: Omit<Event, 'id'>, newCustomer: any) => {
     try {
       console.log('handleNewEvent aufgerufen mit:', { newEvent, newCustomer });
       
-      // TEMPORÄRE LÖSUNG: Lokale Speicherung ohne Firebase
-      console.log('Speichere Service-Angebot lokal...');
+      // SCHRITT 1: Kunde automatisch erstellen (nur mit angeforderten Feldern)
+      if (!newCustomer) {
+        throw new Error('Keine Kundendaten vorhanden');
+      }
+
+      // Debug: Prüfe welche Daten vom Event-Formular kommen
+      console.log('Kundendaten vom Event-Formular:', {
+        firstName: newCustomer.firstName,
+        lastName: newCustomer.lastName,
+        email: newCustomer.email,
+        phone: newCustomer.phone,
+        mobile: newCustomer.mobile,
+        streetAndNumber: newCustomer.streetAndNumber,
+        zipAndCity: newCustomer.zipAndCity,
+        notes: newCustomer.notes,
+        company: newCustomer.company
+      });
+
+      // Erstelle Customer-Objekt nur mit den angeforderten Feldern
+      // Alle Werte explizit aus newCustomer übernehmen (mit Fallback auf leeren String)
       
-      // Event mit ID erstellen
+      // Mapping sicherstellen falls EventForm andere Feldnamen liefert
+      newCustomer.streetAndNumber = newCustomer.streetAndNumber || (newCustomer as any).address || "";
+      newCustomer.zipAndCity = newCustomer.zipAndCity || (newCustomer as any).addressCity || "";
+      newCustomer.mobile = newCustomer.mobile || "";
+      
+      const customerToCreate: Omit<Customer, 'id'> = {
+        name: newCustomer.name || '',
+        firstName: newCustomer.firstName || '',
+        lastName: newCustomer.lastName || '',
+        company: newCustomer.company || '',
+        email: newCustomer.email || '',
+        phone: newCustomer.phone || '',
+        mobile: newCustomer.mobile !== undefined && newCustomer.mobile !== null ? newCustomer.mobile : '',
+        streetAndNumber: newCustomer.streetAndNumber !== undefined && newCustomer.streetAndNumber !== null ? newCustomer.streetAndNumber : '',
+        zipAndCity: newCustomer.zipAndCity !== undefined && newCustomer.zipAndCity !== null ? newCustomer.zipAndCity : '',
+        notes: newCustomer.notes !== undefined && newCustomer.notes !== null ? newCustomer.notes : '',
+        // Alle anderen Felder müssen auf leere Werte gesetzt werden
+        address: composeAddress(newCustomer.streetAndNumber, newCustomer.zipAndCity),
+        addressBride: '',
+        addressGroom: '',
+        nationalityBride: '',
+        nationalityGroom: '',
+        ageBride: '',
+        ageGroom: '',
+        events: [],
+        contactPerson: '',
+        budget: '',
+        guestCount: '',
+        specialRequirements: '',
+        preferences: {
+          catering: false,
+          decoration: false,
+          music: false,
+          photography: false
+        }
+      };
+
+      // Customer-ID generieren
+      const customerId = Date.now().toString() + Math.random().toString(36).substr(2, 6);
+      const customerWithId: Customer = {
+        ...customerToCreate,
+        id: customerId
+      };
+
+      // TEMPORÄRE LÖSUNG: Lokale Speicherung ohne Firebase
+      console.log('Erstelle Kunde lokal mit folgenden Daten:', {
+        id: customerId,
+        firstName: customerToCreate.firstName,
+        lastName: customerToCreate.lastName,
+        email: customerToCreate.email,
+        phone: customerToCreate.phone,
+        mobile: customerToCreate.mobile,
+        streetAndNumber: customerToCreate.streetAndNumber,
+        zipAndCity: customerToCreate.zipAndCity,
+        notes: customerToCreate.notes,
+        company: customerToCreate.company
+      });
+      const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
+      existingCustomers.push(customerWithId);
+      localStorage.setItem('bellavue-customers', JSON.stringify(existingCustomers));
+      console.log('Kunde erfolgreich erstellt:', customerId);
+
+      // SCHRITT 2: Event erstellen mit customerId (nur nach erfolgreicher Customer-Erstellung)
+      console.log('Erstelle Event mit customerId:', customerId);
       const eventId = Date.now().toString() + Math.random().toString(36).substr(2, 6);
-      const eventWithId = {
+      const eventWithId: Event = {
         ...newEvent,
         id: eventId,
-        customerId: newCustomer?.name ? 'temp-customer-' + Date.now() : ''
+        customerId: customerId // Verknüpfe Event mit Customer
       };
-      
-      // Kunde mit ID erstellen (falls vorhanden)
-      let customerId = '';
-      if (newCustomer && newCustomer.name) {
-        customerId = 'temp-customer-' + Date.now();
-        const customerWithId = {
-          ...newCustomer,
-          id: customerId,
-          events: [eventId]
-        };
-        
-        // Lokal speichern
-        const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
-        existingCustomers.push(customerWithId);
-        localStorage.setItem('bellavue-customers', JSON.stringify(existingCustomers));
-        console.log('Kunde lokal gespeichert:', customerWithId);
-      }
-      
+
       // Event lokal speichern
       const existingEvents = JSON.parse(localStorage.getItem('bellavue-events') || '[]');
       existingEvents.push(eventWithId);
       localStorage.setItem('bellavue-events', JSON.stringify(existingEvents));
-      console.log('Event lokal gespeichert:', eventWithId);
-      
-      // UI aktualisieren
+      console.log('Event erfolgreich erstellt:', eventId);
+
+      // SCHRITT 3: Customer mit Event-ID aktualisieren
+      customerWithId.events = [eventId];
+      const updatedCustomers = existingCustomers.map((c: Customer) => 
+        c.id === customerId ? customerWithId : c
+      );
+      localStorage.setItem('bellavue-customers', JSON.stringify(updatedCustomers));
+
+      // SCHRITT 4: UI aktualisieren
+      setCustomers(prev => {
+        const updated = prev.map(c => c.id === customerId ? customerWithId : c);
+        if (!updated.find(c => c.id === customerId)) {
+          updated.push(customerWithId);
+        }
+        return updated;
+      });
       setEvents(prev => [...prev, eventWithId]);
-      if (customerId) {
-        setCustomers(prev => [...prev, {
-          ...newCustomer,
-          id: customerId,
-          events: [eventId]
-        } as Customer]);
-      }
-      
-      // Bestätigung entfernt - wird über PDF Dialog gezeigt
+
+      console.log('Event und Kunde erfolgreich erstellt und verknüpft');
       
     } catch (error) {
       console.error('Fehler beim Erstellen des Events:', error);
       alert('Fehler beim Erstellen des Service-Angebots: ' + (error instanceof Error ? error.message : String(error)));
+      throw error; // Fehler weiterwerfen, damit die Event-Erstellung abgebrochen wird
     }
   };
 
@@ -353,6 +430,88 @@ function App() {
         e.id === event.id ? event : e
       );
       localStorage.setItem('bellavue-events', JSON.stringify(updatedEvents));
+      
+      // Customer erstellen oder aktualisieren, wenn customerId vorhanden
+      if (event.customerId) {
+        const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
+        const existingCustomer = existingCustomers.find((c: Customer) => c.id === event.customerId);
+        
+        if (existingCustomer) {
+          // Customer aktualisieren
+          const updatedCustomer: Customer = {
+            ...existingCustomer,
+            firstName: event.firstName || existingCustomer.firstName || "",
+            lastName: event.lastName || existingCustomer.lastName || "",
+            email: event.email || existingCustomer.email || "",
+            phone: event.phone || existingCustomer.phone || "",
+            mobile: (event as any).mobile || event.mobile || existingCustomer.mobile || "",
+            streetAndNumber: (event as any).streetAndNumber || (event as any).address || existingCustomer.streetAndNumber || "",
+            zipAndCity: (event as any).zipAndCity || (event as any).addressCity || existingCustomer.zipAndCity || "",
+            notes: event.notes || existingCustomer.notes || "",
+            address:
+              (existingCustomer.address && existingCustomer.address.trim())
+                ? existingCustomer.address
+                : composeAddress(
+                    (event as any).streetAndNumber || (event as any).address,
+                    (event as any).zipAndCity || (event as any).addressCity
+                  ),
+          };
+          
+          const updatedCustomers = existingCustomers.map((c: Customer) => 
+            c.id === event.customerId ? updatedCustomer : c
+          );
+          localStorage.setItem('bellavue-customers', JSON.stringify(updatedCustomers));
+          
+          // UI State aktualisieren
+          setCustomers(prev => prev.map(c => c.id === event.customerId ? updatedCustomer : c));
+        } else {
+          // Neuer Customer erstellen
+          const customerName = `${event.firstName || ''} ${event.lastName || ''}`.trim() || event.customer || '';
+          const newCustomer: Customer = {
+            id: event.customerId,
+            name: customerName,
+            firstName: event.firstName || "",
+            lastName: event.lastName || "",
+            company: event.company || "",
+            email: event.email || "",
+            phone: event.phone || "",
+            mobile: (event as any).mobile || event.mobile || "",
+            streetAndNumber: (event as any).streetAndNumber || (event as any).address || "",
+            zipAndCity: (event as any).zipAndCity || (event as any).addressCity || "",
+            notes: event.notes || "",
+            address: composeAddress(
+              (event as any).streetAndNumber || (event as any).address,
+              (event as any).zipAndCity || (event as any).addressCity
+            ),
+            addressBride: "",
+            addressGroom: "",
+            nationalityBride: "",
+            nationalityGroom: "",
+            ageBride: "",
+            ageGroom: "",
+            events: [event.id],
+            contactPerson: "",
+            budget: "",
+            guestCount: "",
+            specialRequirements: "",
+            preferences: {
+              catering: false,
+              decoration: false,
+              music: false,
+              photography: false
+            }
+          };
+          
+          existingCustomers.push(newCustomer);
+          localStorage.setItem('bellavue-customers', JSON.stringify(existingCustomers));
+          
+          // UI State aktualisieren
+          setCustomers(prev => {
+            const updated = prev.filter(c => c.id !== event.customerId);
+            return [...updated, newCustomer];
+          });
+        }
+      }
       
       // UI State aktualisieren
       setEvents(prev => prev.map(e => e.id === event.id ? event : e));
@@ -420,12 +579,18 @@ function App() {
   };
 
   const login = (username: string, password: string) => {
-    if (username === 'Admin' && password === 'BellavueNokta2025#') {
+    // Trim whitespace und normalize
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
+    
+    // Admin Login (case-insensitive)
+    if (trimmedUsername.toLowerCase() === 'admin' && trimmedPassword === 'BellavueNokta2025#') {
       setRole('admin');
       localStorage.setItem('bellavue-role', 'admin');
       return true;
     }
-    if ((username === 'Mitarbeiter') && password === 'BellavueMitarbeiter2025#') {
+    // Mitarbeiter Login (case-insensitive)
+    if (trimmedUsername.toLowerCase() === 'mitarbeiter' && trimmedPassword === 'BellavueMitarbeiter2025#') {
       setRole('user');
       localStorage.setItem('bellavue-role', 'user');
       return true;
@@ -612,7 +777,16 @@ const LoginDialog: React.FC = () => {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  
+  const handleClickShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+  
+  const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
   
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -691,11 +865,25 @@ const LoginDialog: React.FC = () => {
             required
             fullWidth
             label="Passwort"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
             sx={{ mb: 2 }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="Passwort anzeigen/verstecken"
+                    onClick={handleClickShowPassword}
+                    onMouseDown={handleMouseDownPassword}
+                    edge="end"
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>

@@ -17,8 +17,51 @@ export interface Event {
   files?: string[];
   assignedStaff?: string[];
   comments?: string[];
-  // Zusätzliche Felder
-  guestCount?: string;
+  
+  // Customer fields - PRIMARY FIELDS (used in Firebase)
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  mobile?: string;
+  mobileNumber?: string; // Alias for mobile
+  street?: string; // Alias for streetAndNumber
+  streetAndNumber?: string;
+  zipCity?: string; // Alias for zipAndCity
+  zipAndCity?: string;
+  notes?: string;
+  
+  // Event fields - PRIMARY FIELDS (used in Firebase)
+  eventType?: string; // Alias for veranstaltungsart
+  veranstaltungsart?: string;
+  guestCount?: number | string;
+  weekday?: string; // Alias for wochentag
+  wochentag?: string;
+  eventDate?: string; // Alias for date
+  eventHall?: string; // Alias for room
+  deposit?: number | string; // Alias for anzahlung
+  anzahlung?: string;
+  totalPrice?: number | string; // Alias for gesamtpreis
+  gesamtpreis?: string;
+  servicePrice?: number | string; // Alias for service/serviceKosten
+  service?: string;
+  serviceKosten?: string;
+  hallPrice?: number | string; // Alias for saalmiete
+  saalmiete?: string;
+  remainingPayment?: number | string; // Alias for restzahlung
+  restzahlung?: string;
+  acceptedOffer?: boolean | string; // Alias for angebotAngenommen
+  angebotAngenommen?: string;
+  customerSignatureDate?: string; // Alias for datumUnterschriftKunde
+  datumUnterschriftKunde?: string;
+  bellavueSignatureDate?: string; // Alias for datumUnterschriftBellavue
+  datumUnterschriftBellavue?: string;
+  
+  // Services list as array
+  serviceLeistungen?: string[];
+  
+  // Legacy fields for compatibility
   kosten?: string;
   eventTypes?: string[];
   preferences?: {
@@ -28,16 +71,9 @@ export interface Event {
     photography?: boolean;
   };
   specialRequirements?: string;
-  notes?: string;
-  // Kundeninformationen (aus Service-Angebot)
-  firstName?: string;
-  lastName?: string;
-  company?: string;
-  email?: string;
-  phone?: string;
-  mobile?: string;
   address?: string;
   addressCity?: string;
+  
   // Brautpaar Felder
   addressBride?: string;
   addressGroom?: string;
@@ -45,24 +81,17 @@ export interface Event {
   nationalityGroom?: string;
   ageBride?: string;
   ageGroom?: string;
-  // Event Details
+  
+  // Event Details (legacy)
   personenanzahl?: string;
-  veranstaltungsart?: string;
   eventsaal1?: boolean;
   eventsaal2?: boolean;
   veranstaltungsdatum?: string;
-  wochentag?: string;
-  // Kostenübersicht
   angebotssumme?: string;
-  saalmiete?: string;
-  service?: string;
-  gesamtpreis?: string;
-  anzahlung?: string;
-  restzahlung?: string;
-  // Tischaufstellung
+  
+  // Service checkboxes (individual)
   rundeTische?: boolean;
   eckigeTische?: boolean;
-  // Essen & Catering
   etSoteHaehnchengeschnetzeltes?: boolean;
   tavukSoteRindergulasch?: boolean;
   halbesHaehnchen?: boolean;
@@ -74,42 +103,30 @@ export interface Event {
   knabbereienCerez?: boolean;
   obstschale?: boolean;
   nachtischBaklava?: boolean;
-  // Getränke
   teeKaffeeservice?: boolean;
   softgetraenkeMineralwasser?: boolean;
-  // Torte
   hochzeitstorte3Etagen?: boolean;
   hochzeitstorteFlach?: boolean;
-  // Service
   standardDekoration?: boolean;
   serviceAllgemein?: boolean;
   bandDj?: boolean;
-  // Video & Fotografie
   videoKameraKranHDOhne?: boolean;
   videoKameraKranHDMit?: boolean;
   videoKameraKranHDMitBrautigam?: boolean;
   fotoshootingUSB?: boolean;
   weddingStoryClip?: boolean;
   fotoalbum?: boolean;
-  // Musik
   davulZurna4Stunden?: boolean;
   davulZurnaMitBrautabholung?: boolean;
-  // Dekoration & Effekte
   saeulenabgrenzungBlumenFeuerwerk?: boolean;
   saeulenabgrenzungKuchenAnschneiden?: boolean;
   eingangsfeuerwerkBrautpaar?: boolean;
-  // Extras
   helikopterlandung?: boolean;
   obstKuchenbuffetTatli?: boolean;
   cigkoefteTischservice?: boolean;
   suppeHauptgang?: boolean;
   cocktailEmpfang?: boolean;
-  // Unterschrift
   signature?: string;
-  // Datum & Unterschrift
-  angebotAngenommen?: string;
-  datumUnterschriftKunde?: string;
-  datumUnterschriftBellavue?: string;
 }
 
 export interface Customer {
@@ -123,6 +140,8 @@ export interface Customer {
   phone: string;
   mobile: string;
   address?: string;
+  streetAndNumber?: string;
+  zipAndCity?: string;
   // Anschrift Braut
   addressBride: string;
   // Anschrift Bräutigam
