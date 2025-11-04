@@ -42,6 +42,8 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
     email: '',
     phone: '',
     mobile: '',
+    address: '',
+    addressCity: '',
     addressBride: '',
     addressGroom: '',
     nationalityBride: '',
@@ -246,10 +248,27 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
       status: 'planned',
       customerId: '',
       customer: customerName,
-      description: `Veranstaltungsart: ${formData.veranstaltungsart}\nAnzahl Personen: ${formData.personenanzahl}\nWochentag: ${formData.wochentag}`,
+      description: `Service-Angebot Details:\nVeranstaltungsart: ${formData.veranstaltungsart}\nPersonenanzahl: ${formData.personenanzahl}\nWochentag: ${formData.wochentag}\nAngebotssumme: ${formData.angebotssumme}€\nSaalmiete: ${formData.saalmiete}€\nService: ${formData.service}€\nGesamtpreis: ${formData.gesamtpreis}€\nAnzahlung: ${formData.anzahlung}€\nRestzahlung: ${formData.restzahlung}€`,
       files: [],
       assignedStaff: [],
       comments: [],
+      
+      // ALLE persönlichen Kundeninformationen aus Service-Angebot
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      company: formData.company,
+      email: formData.email,
+      phone: formData.phone,
+      mobile: formData.mobile,
+      address: formData.address || formData.addressBride || formData.addressGroom || '',
+      addressCity: formData.addressCity,
+      addressBride: formData.addressBride,
+      addressGroom: formData.addressGroom,
+      nationalityBride: formData.nationalityBride,
+      nationalityGroom: formData.nationalityGroom,
+      ageBride: formData.ageBride,
+      ageGroom: formData.ageGroom,
+      
       // Service-Angebot Felder
       guestCount: formData.personenanzahl,
       kosten: formData.gesamtpreis,
@@ -333,6 +352,8 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
       email: '',
       phone: '',
       mobile: '',
+      address: '',
+      addressCity: '',
       addressBride: '',
       addressGroom: '',
       nationalityBride: '',
@@ -533,6 +554,55 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
             />
             </Box>
           </Box>
+
+          {/* Anschrift - immer sichtbar außer bei Hochzeit */}
+          {!formData.veranstaltungsart.toLowerCase().includes('hochzeit') && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'text.primary', fontWeight: 600 }}>
+                📍 Anschrift
+              </Typography>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: 3, 
+                p: 3,
+                backgroundColor: 'background.paper',
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}>
+                <TextField
+                  fullWidth
+                  label="Straße & Hausnummer"
+                  value={formData.address}
+                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                  required
+                  variant="outlined"
+                  placeholder="z.B. Musterstraße 123"
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: 'background.default'
+                    }
+                  }}
+                />
+                <TextField
+                  fullWidth
+                  label="PLZ & Ort"
+                  value={formData.addressCity}
+                  onChange={(e) => setFormData(prev => ({ ...prev, addressCity: e.target.value }))}
+                  required
+                  variant="outlined"
+                  placeholder="z.B. 12345 Musterstadt"
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: 'background.default'
+                    }
+                  }}
+                />
+              </Box>
+            </Box>
+          )}
 
           {/* Event Details */}
           <Typography variant="h5" gutterBottom sx={{ mt: 2, mb: 3, color: 'primary.main', fontWeight: 'bold' }}>

@@ -29,6 +29,22 @@ export interface Event {
   };
   specialRequirements?: string;
   notes?: string;
+  // Kundeninformationen (aus Service-Angebot)
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  mobile?: string;
+  address?: string;
+  addressCity?: string;
+  // Brautpaar Felder
+  addressBride?: string;
+  addressGroom?: string;
+  nationalityBride?: string;
+  nationalityGroom?: string;
+  ageBride?: string;
+  ageGroom?: string;
   // Event Details
   personenanzahl?: string;
   veranstaltungsart?: string;
