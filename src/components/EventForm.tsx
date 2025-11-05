@@ -23,8 +23,9 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import type { Event, Customer } from '../types';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { db, auth } from '../firebase/config';
 import { customerService } from '../firebase/firestore';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 interface EventFormProps {
   open: boolean;
@@ -209,9 +210,40 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
     handleClose();
   };
 
+  // Hilfsfunktion: Wartet auf authentifizierten Benutzer
+  const ensureAuthenticated = async (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          unsubscribe();
+          resolve();
+        } else {
+          // Versuche anonyme Authentifizierung
+          try {
+            await signInAnonymously(auth);
+            unsubscribe();
+            resolve();
+          } catch (error) {
+            unsubscribe();
+            reject(new Error('Authentifizierung fehlgeschlagen: ' + (error instanceof Error ? error.message : String(error))));
+          }
+        }
+      });
+      
+      // Timeout nach 10 Sekunden
+      setTimeout(() => {
+        unsubscribe();
+        reject(new Error('Authentifizierung-Timeout: Keine Antwort von Firebase'));
+      }, 10000);
+    });
+  };
+
   // Funktion zum Speichern des Events direkt in Firebase
   const handleEventSubmit = async (customerId: string) => {
     try {
+      // Sicherstellen, dass Benutzer authentifiziert ist
+      await ensureAuthenticated();
+      console.log('Benutzer ist authentifiziert, speichere Event...');
       // Mapping: Checkbox-Feld → Exakter Label-Text (inkl. End-Codes)
       const serviceLabels: Record<string, string> = {
         // Tischaufstellung
@@ -622,6 +654,10 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
         events: []
       };
 
+      // Sicherstellen, dass Benutzer authentifiziert ist, bevor wir speichern
+      await ensureAuthenticated();
+      console.log('Benutzer ist authentifiziert, speichere Customer...');
+
       // Customer in Firebase speichern
       console.log('Speichere Customer in Firebase...', newCustomer);
       const customerId = await customerService.createCustomer(newCustomer);
@@ -631,6 +667,9 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
       console.log('Speichere Event in Firebase...');
       const eventId = await handleEventSubmit(customerId);
       console.log('Event erfolgreich in Firebase gespeichert mit ID:', eventId);
+
+      // Formular zurücksetzen
+      handleClose();
 
       // Services als Array für serviceLeistungen
       const serviceLeistungenArray: string[] = [
@@ -776,9 +815,25 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
       console.error('Fehler beim Speichern:', error);
       console.error('Fehlerdetails:', {
         message: error instanceof Error ? error.message : 'Unbekannter Fehler',
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
+        code: (error as any)?.code,
+        details: (error as any)?.details
       });
-      alert(`Fehler beim Speichern des Events: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}. Bitte versuchen Sie es erneut.`);
+      
+      let errorMessage = 'Fehler beim Speichern des Events. ';
+      if (error instanceof Error) {
+        if (error.message.includes('permission') || error.message.includes('Missing or insufficient permissions')) {
+          errorMessage += 'Berechtigungsfehler: Bitte stellen Sie sicher, dass die Firestore Security Rules korrekt konfiguriert sind und die anonyme Authentifizierung aktiviert ist.';
+        } else if (error.message.includes('Authentifizierung')) {
+          errorMessage += 'Authentifizierungsfehler: ' + error.message;
+        } else {
+          errorMessage += error.message;
+        }
+      } else {
+        errorMessage += 'Unbekannter Fehler. Bitte versuchen Sie es erneut.';
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -1028,11 +1083,11 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
               placeholder="Zusätzliche Informationen oder Notizen zum Kunden"
               sx={{ 
                 gridColumn: { xs: '1', sm: '1 / -1' },
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: 'background.default'
-                }
-              }}
-            />
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: 'background.default'
+                    }
+                  }}
+                />
               </Box>
             </Box>
 
