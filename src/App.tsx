@@ -560,49 +560,75 @@ function App() {
   };
 
   const login = async (username: string, password: string): Promise<boolean> => {
+    // Email-Adressen für Admin und Mitarbeiter
+    let email = '';
+    let userRole: UserRole = null;
+    
     try {
       // Trim whitespace und normalize
       const trimmedUsername = username.trim();
       const trimmedPassword = password.trim();
       
-      // Email-Adressen für Admin und Mitarbeiter
-      let email = '';
-      let userRole: UserRole = null;
+      console.log('Login attempt:', { trimmedUsername, hasPassword: !!trimmedPassword });
       
       // Admin Login (case-insensitive)
       if (trimmedUsername.toLowerCase() === 'admin' && trimmedPassword === 'BellavueNokta2025#') {
         email = 'admin@bellavue-eventzentrum.de';
         userRole = 'admin';
+        console.log('Admin login detected');
       }
       // Mitarbeiter Login (case-insensitive)
       else if (trimmedUsername.toLowerCase() === 'mitarbeiter' && trimmedPassword === 'BellavueMitarbeiter2025#') {
         email = 'mitarbeiter@bellavue-eventzentrum.de';
         userRole = 'user';
+        console.log('Mitarbeiter login detected');
+      }
+      // Entwickler Login - Email direkt als Username verwenden
+      else if (trimmedUsername.includes('@')) {
+        // Wenn Username eine Email-Adresse ist, verwende sie direkt
+        // Firebase Authentication ist case-insensitive, aber wir normalisieren trotzdem
+        // WICHTIG: Email wird in Kleinbuchstaben konvertiert, aber Firebase sollte beide akzeptieren
+        email = trimmedUsername.toLowerCase();
+        // Rolle wird aus Firestore geladen (wird später gesetzt)
+        userRole = null; // Wird aus Firestore geladen
+        console.log('Email login detected:', email);
+        console.log('Original username:', trimmedUsername);
       }
       else {
+        console.log('No matching login pattern found');
         return false;
       }
+      
+      console.log('Attempting Firebase authentication with:', { email, hasPassword: !!trimmedPassword });
       
       // Firebase Authentication mit Email/Password
       const userCredential = await signInWithEmailAndPassword(auth, email, trimmedPassword);
       const firebaseUser = userCredential.user;
+      console.log('Firebase authentication successful:', firebaseUser.uid);
       
       // User-Dokument in Firestore erstellen/aktualisieren
       const userDocRef = doc(db, 'users', firebaseUser.uid);
       const userDocSnap = await getDoc(userDocRef);
       
       if (!userDocSnap.exists()) {
-        // Neuer User - erstelle Dokument mit Rolle
+        // Neuer User - erstelle Dokument mit Rolle (Standard: admin für Entwickler)
+        // Wenn keine Rolle aus Login-Credentials, dann admin als Standard
+        const defaultRole = userRole || 'admin';
         await setDoc(userDocRef, {
           email: email,
-          role: userRole,
+          role: defaultRole,
           createdAt: new Date().toISOString()
         });
-        console.log('User document created in Firestore');
+        console.log('User document created in Firestore with role:', defaultRole);
       } else {
-        // Bestehender User - aktualisiere Rolle falls nötig
+        // Bestehender User - aktualisiere Email falls nötig, aber behalte Rolle
         const existingData = userDocSnap.data();
-        if (existingData.role !== userRole) {
+        if (existingData.email !== email) {
+          await setDoc(userDocRef, { ...existingData, email: email }, { merge: true });
+          console.log('User email updated in Firestore');
+        }
+        // Wenn userRole gesetzt ist (z.B. bei admin/mitarbeiter), aktualisiere es
+        if (userRole && existingData.role !== userRole) {
           await setDoc(userDocRef, { ...existingData, role: userRole }, { merge: true });
           console.log('User role updated in Firestore');
         }
@@ -612,13 +638,29 @@ function App() {
       return true;
     } catch (error: any) {
       console.error('Login error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       
-      // Wenn User nicht existiert, erstelle ihn (nur beim ersten Login)
+      // Detaillierte Fehlermeldungen
       if (error.code === 'auth/user-not-found') {
-        // Für jetzt: User nicht gefunden = falsche Credentials
+        console.error('User not found in Firebase Authentication. Bitte prüfe, ob der User in Firebase Console angelegt wurde.');
+        alert('Fehler: User nicht gefunden. Bitte prüfe, ob der User mit der Email ' + (email || username) + ' in Firebase Authentication angelegt wurde.');
+        return false;
+      } else if (error.code === 'auth/wrong-password') {
+        console.error('Wrong password');
+        alert('Fehler: Falsches Passwort. Bitte prüfe das Passwort in Firebase Authentication.');
+        return false;
+      } else if (error.code === 'auth/invalid-email') {
+        console.error('Invalid email address');
+        alert('Fehler: Ungültige Email-Adresse: ' + (email || username));
+        return false;
+      } else if (error.code === 'auth/invalid-credential') {
+        console.error('Invalid credential - wrong email or password');
+        alert('Fehler: Falsche Email oder Passwort. Bitte prüfe deine Anmeldedaten.');
         return false;
       }
       
+      alert('Login-Fehler: ' + (error.message || 'Unbekannter Fehler') + '\n\nBitte öffne die Browser-Konsole (F12) für Details.');
       return false;
     }
   };
@@ -758,9 +800,10 @@ const LoginDialog: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    console.log('Login attempt:', { username, passwordLength: password.length });
     const success = await login(username, password);
     if (!success) {
-      setError('Falscher Benutzername oder Passwort');
+      setError('Falscher Benutzername oder Passwort. Bitte prüfe die Browser-Konsole (F12) für Details.');
     }
   };
   
