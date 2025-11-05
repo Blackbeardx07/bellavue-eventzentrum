@@ -590,74 +590,8 @@ function App() {
     localStorage.removeItem('bellavue-role');
   };
 
-  useEffect(() => {
-    // Events aus localStorage laden
-    const savedEvents = JSON.parse(localStorage.getItem('bellavue-events') || '[]');
-    if (savedEvents.length > 0) {
-      setEvents(savedEvents);
-    } else {
-      // Beispiel-Event nur hinzufügen, wenn keine gespeicherten Events vorhanden sind
-      const customerId = '1001';
-      const newCustomer = {
-        id: customerId,
-        name: 'Familie Yılmaz & Familie Demir',
-        email: 'yilmaz-demir@email.com',
-        phone: '+49 170 1234567',
-        address: 'Beispielstraße 10, 12345 Musterstadt',
-        events: [],
-        tags: ['VIP', 'Hochzeit', 'Türkisch'],
-        notes: 'Brautpaar wünscht Feuerwerk um Mitternacht, Hochzeitstorte 5-stöckig, Sitzordnung nach Familien',
-        contactPerson: 'Herr Yılmaz',
-        company: '',
-        website: '',
-        vatNumber: '',
-        birthday: '',
-        anniversary: '',
-        preferences: {
-          catering: true,
-          decoration: true,
-          music: true,
-          photography: true
-        },
-        budget: '18000',
-        guestCount: '300',
-        specialRequirements: 'Bühne für Live-Band, Halal-Catering, Kinderbetreuung, Fotobox, große Tanzfläche, Dekoration in Gold & Rot'
-      };
-      setCustomers(prev => [...prev, newCustomer as unknown as Customer]);
-      const newEvent = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 6),
-        title: 'Türkische Hochzeit – Yılmaz & Demir',
-        date: '2025-10-18',
-        time: '16:00 – 02:00',
-        room: 'Event 1, Event 2',
-        status: 'confirmed' as const,
-        customerId: customerId,
-        customer: 'Familie Yılmaz & Familie Demir',
-        description: 'Große türkische Hochzeit mit traditioneller Zeremonie, Live-Musik, Tanz und umfangreichem Buffet. Nutzung beider Säle für Zeremonie, Dinner und Party.',
-        files: ['hochzeit_yilmaz_demir_vertrag.pdf', 'tischplan.pdf'],
-        assignedStaff: ['DJ Cem', 'Band Anadolu', 'Fotografin Aylin'],
-        comments: ['Feuerwerk um Mitternacht', 'Torte 5-stöckig', 'DJ & Live-Band abwechselnd'],
-        guestCount: '300',
-        kosten: '18000',
-        specialRequirements: 'Bühne für Live-Band, Halal-Catering, Kinderbetreuung, Fotobox, große Tanzfläche, Dekoration in Gold & Rot',
-        notes: 'Brautpaar wünscht Feuerwerk um Mitternacht, Hochzeitstorte 5-stöckig, DJ & Live-Band abwechselnd, Sitzordnung nach Familien',
-        eventTypes: ['Hochzeit', 'Türkisch', 'Großevent'],
-        preferences: {
-          catering: true,
-          decoration: true,
-          music: true,
-          photography: true
-        }
-      };
-      setEvents(prev => [...prev, newEvent]);
-    }
-    
-    // Kunden aus localStorage laden
-    const savedCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
-    if (savedCustomers.length > 0) {
-      setCustomers(savedCustomers);
-    }
-  }, []);
+  // Daten werden über Firebase Real-time Listener geladen (siehe useEffect oben)
+  // Keine localStorage-Lade-Logik mehr nötig - alles kommt aus Firebase
 
   return (
     <AuthContext.Provider value={{ role, login, logout }}>
