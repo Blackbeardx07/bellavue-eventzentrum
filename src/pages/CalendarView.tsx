@@ -52,6 +52,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onNewEvent }) => {
   const [customerFilter, setCustomerFilter] = useState<string>('all');
   const navigate = useNavigate();
   const { role } = useAuth();
+  
+  // Debug: Prüfe die Rolle
+  React.useEffect(() => {
+    console.log('CalendarView - Current role:', role);
+    console.log('CalendarView - Should show button:', role === 'admin');
+  }, [role]);
 
   const monthNames = [
     'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',

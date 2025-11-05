@@ -141,6 +141,8 @@ function App() {
             const userData = userDocSnap.data();
             const userRole = userData.role as UserRole;
             console.log('User role from Firestore:', userRole);
+            console.log('User role type:', typeof userRole);
+            console.log('User role === "admin":', userRole === 'admin');
             setRole(userRole);
             localStorage.setItem('bellavue-role', userRole || '');
             
@@ -246,119 +248,12 @@ function App() {
   const composeAddress = (streetAndNumber?: string, zipAndCity?: string) =>
     [streetAndNumber?.trim(), zipAndCity?.trim()].filter(Boolean).join(', ');
 
-  const handleNewEvent = async (newEvent: Omit<Event, 'id'>, newCustomer: any) => {
-    try {
-      console.log('handleNewEvent aufgerufen mit:', { newEvent, newCustomer });
-      
-      // SCHRITT 1: Kunde automatisch erstellen (nur mit angeforderten Feldern)
-      if (!newCustomer) {
-        throw new Error('Keine Kundendaten vorhanden');
-      }
-
-      // Debug: Prüfe welche Daten vom Event-Formular kommen
-      console.log('Kundendaten vom Event-Formular:', {
-        firstName: newCustomer.firstName,
-        lastName: newCustomer.lastName,
-        email: newCustomer.email,
-        phone: newCustomer.phone,
-        mobile: newCustomer.mobile,
-        streetAndNumber: newCustomer.streetAndNumber,
-        zipAndCity: newCustomer.zipAndCity,
-        notes: newCustomer.notes,
-        company: newCustomer.company
-      });
-
-      // Erstelle Customer-Objekt nur mit den angeforderten Feldern
-      // Alle Werte explizit aus newCustomer übernehmen (mit Fallback auf leeren String)
-      
-      // Mapping sicherstellen falls EventForm andere Feldnamen liefert
-      newCustomer.streetAndNumber = newCustomer.streetAndNumber || (newCustomer as any).address || "";
-      newCustomer.zipAndCity = newCustomer.zipAndCity || (newCustomer as any).addressCity || "";
-      newCustomer.mobile = newCustomer.mobile || "";
-      
-      const customerToCreate: Omit<Customer, 'id'> = {
-        name: newCustomer.name || '',
-        firstName: newCustomer.firstName || '',
-        lastName: newCustomer.lastName || '',
-        company: newCustomer.company || '',
-        email: newCustomer.email || '',
-        phone: newCustomer.phone || '',
-        mobile: newCustomer.mobile !== undefined && newCustomer.mobile !== null ? newCustomer.mobile : '',
-        streetAndNumber: newCustomer.streetAndNumber !== undefined && newCustomer.streetAndNumber !== null ? newCustomer.streetAndNumber : '',
-        zipAndCity: newCustomer.zipAndCity !== undefined && newCustomer.zipAndCity !== null ? newCustomer.zipAndCity : '',
-        notes: newCustomer.notes !== undefined && newCustomer.notes !== null ? newCustomer.notes : '',
-        // Alle anderen Felder müssen auf leere Werte gesetzt werden
-        address: composeAddress(newCustomer.streetAndNumber, newCustomer.zipAndCity),
-        addressBride: '',
-        addressGroom: '',
-        nationalityBride: '',
-        nationalityGroom: '',
-        ageBride: '',
-        ageGroom: '',
-        events: [],
-        contactPerson: '',
-        budget: '',
-        guestCount: '',
-        specialRequirements: '',
-        preferences: {
-          catering: false,
-          decoration: false,
-          music: false,
-          photography: false
-        }
-      };
-
-      // Customer-ID generieren
-      const customerId = Date.now().toString() + Math.random().toString(36).substr(2, 6);
-      const customerWithId: Customer = {
-        ...customerToCreate,
-        id: customerId
-      };
-
-      // SCHRITT 1B: Customer in Firebase speichern
-      console.log('Speichere Customer in Firebase...', customerToCreate);
-      const savedCustomerId = await customerService.createCustomer(customerToCreate);
-      console.log('Customer erfolgreich in Firebase gespeichert mit ID:', savedCustomerId);
-      customerWithId.id = savedCustomerId;
-
-      // SCHRITT 2: Event in Firebase speichern
-      console.log('Erstelle Event mit customerId:', savedCustomerId);
-      const eventToSave: Omit<Event, 'id'> = {
-        ...newEvent,
-        customerId: savedCustomerId
-      };
-
-      console.log('Speichere Event in Firebase...', eventToSave);
-      const eventId = await eventService.createEvent(eventToSave);
-      console.log('Event erfolgreich in Firebase gespeichert mit ID:', eventId);
-
-      const eventWithId: Event = {
-        ...eventToSave,
-        id: eventId
-      };
-
-      // SCHRITT 3: Customer mit Event-ID in Firebase aktualisieren
-      customerWithId.events = [eventId];
-      await customerService.updateCustomer(savedCustomerId, { events: [eventId] });
-      console.log('Customer in Firebase mit Event-ID aktualisiert');
-
-      // SCHRITT 4: UI aktualisieren
-      setCustomers(prev => {
-        const updated = prev.map(c => c.id === savedCustomerId ? customerWithId : c);
-        if (!updated.find(c => c.id === savedCustomerId)) {
-          updated.push(customerWithId);
-        }
-        return updated;
-      });
-      setEvents(prev => [...prev, eventWithId]);
-
-      console.log('Event und Kunde erfolgreich erstellt und verknüpft');
-      
-    } catch (error) {
-      console.error('Fehler beim Erstellen des Events:', error);
-      alert('Fehler beim Erstellen des Service-Angebots: ' + (error instanceof Error ? error.message : String(error)));
-      throw error; // Fehler weiterwerfen, damit die Event-Erstellung abgebrochen wird
-    }
+  // WICHTIG: handleNewEvent wird nicht mehr verwendet, da EventForm direkt in Firebase speichert
+  // Die Daten werden über Firebase Real-time Listeners automatisch geladen
+  const handleNewEvent = async (_newEvent: Omit<Event, 'id'>, _newCustomer: any) => {
+    console.log('handleNewEvent aufgerufen (wird nicht mehr verwendet - EventForm speichert direkt in Firebase)');
+    // Diese Funktion wird nur noch für Kompatibilität aufgerufen, aber macht nichts
+    // EventForm speichert direkt in Firebase, die Daten kommen über Real-time Listeners
   };
 
   const handleCustomerFormSubmit = (newCustomer: Omit<Customer, 'id'>) => {

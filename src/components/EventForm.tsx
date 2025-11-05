@@ -29,11 +29,11 @@ import { customerService } from '../firebase/firestore';
 interface EventFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (event: Omit<Event, 'id'>, customer: Omit<Customer, 'id'>) => void;
+  onSubmit?: (event: Omit<Event, 'id'>, customer: Omit<Customer, 'id'>) => void; // Optional, da wir direkt in Firebase speichern
   initialDate?: Date;
 }
 
-const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialDate }) => {
+const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit: _onSubmit, initialDate }) => {
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
   
@@ -481,126 +481,11 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
 
   const handleSubmit = async () => {
     try {
-      // Mapping: Checkbox-Feld → Exakter Label-Text (inkl. End-Codes)
-      const serviceLabels: Record<string, string> = {
-        // Tischaufstellung
-        rundeTische: 'Runde Tische',
-        eckigeTische: 'Eckige Tische',
-        
-        // Essen & Catering
-        etSoteHaehnchengeschnetzeltes: 'Et Sote / Hähnchengeschnetzeltes (Tischbuffet)',
-        tavukSoteRindergulasch: 'Tavuk Sote / Rindergulasch (Tischbuffet)',
-        halbesHaehnchen: 'Halbes Hähnchen (Tischservice)',
-        reis: 'Reis (Tischbuffet)',
-        gemuese: 'Gemüse (Tischbuffet) oder',
-        salatJahreszeit: 'Salat entsprechend der Jahreszeit (Tischbuffet)',
-        pommesSalzkartoffel: 'Pommes oder Salzkartoffel (Tischservice)',
-        antipastiVorspeisenBrot: '3 Sorten Antipasti / Vorspeisen und Brot (Meze) als (Tischservice)',
-        knabbereienCerez: 'Knabbereien (Cerez) (Tischservice)',
-        obstschale: 'Obstschale mind. 4-5 Sorten Obst (Tischservice)',
-        nachtischBaklava: 'Nachtisch (z.B Baklava pro Tisch 1- Teller) (Tischservice)',
-        
-        // Getränke
-        teeKaffeeservice: 'Tee & Kaffeeservice (Tee & Kaffee Station und Service im Bistro)',
-        softgetraenkeMineralwasser: 'Softgetränke und Mineralwasser (Tischservice ohne Limit)',
-        
-        // Torte
-        hochzeitstorte3Etagen: 'Hochzeitstorte 3 Etagen (Geschmack nach Wahl) oder',
-        hochzeitstorteFlach: 'Hochzeitstorte (flach) zum selber bestücken mit 5 Sorten Früchten',
-        
-        // Service
-        standardDekoration: 'Standard Dekoration Saal sowie Tischdekoration',
-        serviceAllgemein: 'Service im Allgemein',
-        bandDj: 'Band & DJ',
-        
-        // Video & Fotografie
-        videoKameraKranHDOhne: '3 x Video Kamera inkl. Kran HD (ohne Brautabholung)',
-        videoKameraKranHDMit: '3 x Video Kamera inkl. Kran HD im Saal (inkl. Brautabholung) F 6.8',
-        videoKameraKranHDMitBrautigam: '3 x Video Kamera inkl. Kran HD im Saal (inkl. Bräutigamabholung) S 5.8',
-        fotoshootingUSB: 'Fotoshooting inkl. 35-40 Bilder auf USB Stick K 5.5',
-        weddingStoryClip: 'Wedding Story (Clip) aus Brautabholung, Fotoshooting, 1. Tanz H 6.5',
-        fotoalbum: 'Fotoalbum mit ca. 35 hochwertig gedruckte Bilder B 6.0',
-        
-        // Musik
-        davulZurna4Stunden: '1x Davul & Zurna (4-5 Stunden nur im Saal) A 7.5',
-        davulZurnaMitBrautabholung: '1x Davul & Zurna (inkl. Brautabholung und 4-5 Stunden im Saal) L 8.5',
-        
-        // Dekoration & Effekte
-        saeulenabgrenzungBlumenFeuerwerk: 'Säulenabgrenzung mit Blumen, Feuerwerk, Bodennebel und Hochzeitslaser 4-6 Stk. (für den 1. Tanz) M 5.0',
-        saeulenabgrenzungKuchenAnschneiden: 'Säulenabgrenzung mit Blumen, Feuerwerk, Bodennebel (4-6 Stk.) beim Kuchen Anschneiden W 4.0',
-        eingangsfeuerwerkBrautpaar: 'Eingangsfeuerwerk für Brautpaar (8-10 Stk.) beim Betreten vom Saal D 5.0 (Nur in den Wintermonaten und bei Dunkelheit möglich)',
-        
-        // Extras
-        helikopterlandung: 'Landung mit dem Helikopter auf dem Parkplatz des Eventzentrums F 28.0',
-        obstKuchenbuffetTatli: 'Obst und Küchenbuffet inkl. Tatli als offenes Buffet nach dem Essen RK 0,20',
-        cigkoefteTischservice: 'Cigköfte als Tischservice inkl. Blattsalat, Soße und Zitrone SR 0,20',
-        suppeHauptgang: 'Suppe vor dem Hauptgang als Tischservice Mercimek, Yayla, Broccoli LA 0,27',
-        cocktailEmpfang: 'Cocktail Empfang (Alkoholfrei ca. 2 Stunden am Haupteingang durch Kellner) TU 0,18'
-      };
-
-      // Services in Arrays gruppieren - EXAKTE Label-Texte verwenden
-      const services = {
-        tischaufstellung: [
-          formData.rundeTische ? serviceLabels.rundeTische : '',
-          formData.eckigeTische ? serviceLabels.eckigeTische : ''
-        ].filter(Boolean),
-        essenCatering: [
-          formData.etSoteHaehnchengeschnetzeltes ? serviceLabels.etSoteHaehnchengeschnetzeltes : '',
-          formData.tavukSoteRindergulasch ? serviceLabels.tavukSoteRindergulasch : '',
-          formData.halbesHaehnchen ? serviceLabels.halbesHaehnchen : '',
-          formData.reis ? serviceLabels.reis : '',
-          formData.gemuese ? serviceLabels.gemuese : '',
-          formData.salatJahreszeit ? serviceLabels.salatJahreszeit : '',
-          formData.pommesSalzkartoffel ? serviceLabels.pommesSalzkartoffel : '',
-          formData.antipastiVorspeisenBrot ? serviceLabels.antipastiVorspeisenBrot : '',
-          formData.knabbereienCerez ? serviceLabels.knabbereienCerez : '',
-          formData.obstschale ? serviceLabels.obstschale : '',
-          formData.nachtischBaklava ? serviceLabels.nachtischBaklava : ''
-        ].filter(Boolean),
-        getraenke: [
-          formData.teeKaffeeservice ? serviceLabels.teeKaffeeservice : '',
-          formData.softgetraenkeMineralwasser ? serviceLabels.softgetraenkeMineralwasser : ''
-        ].filter(Boolean),
-        torte: [
-          formData.hochzeitstorte3Etagen ? serviceLabels.hochzeitstorte3Etagen : '',
-          formData.hochzeitstorteFlach ? serviceLabels.hochzeitstorteFlach : ''
-        ].filter(Boolean),
-        service: [
-          formData.standardDekoration ? serviceLabels.standardDekoration : '',
-          formData.serviceAllgemein ? serviceLabels.serviceAllgemein : '',
-          formData.bandDj ? serviceLabels.bandDj : ''
-        ].filter(Boolean),
-        videoFotografie: [
-          formData.videoKameraKranHDOhne ? serviceLabels.videoKameraKranHDOhne : '',
-          formData.videoKameraKranHDMit ? serviceLabels.videoKameraKranHDMit : '',
-          formData.videoKameraKranHDMitBrautigam ? serviceLabels.videoKameraKranHDMitBrautigam : '',
-          formData.fotoshootingUSB ? serviceLabels.fotoshootingUSB : '',
-          formData.weddingStoryClip ? serviceLabels.weddingStoryClip : '',
-          formData.fotoalbum ? serviceLabels.fotoalbum : ''
-        ].filter(Boolean),
-        musik: [
-          formData.davulZurna4Stunden ? serviceLabels.davulZurna4Stunden : '',
-          formData.davulZurnaMitBrautabholung ? serviceLabels.davulZurnaMitBrautabholung : ''
-        ].filter(Boolean),
-        dekoEffekte: [
-          formData.saeulenabgrenzungBlumenFeuerwerk ? serviceLabels.saeulenabgrenzungBlumenFeuerwerk : '',
-          formData.saeulenabgrenzungKuchenAnschneiden ? serviceLabels.saeulenabgrenzungKuchenAnschneiden : '',
-          formData.eingangsfeuerwerkBrautpaar ? serviceLabels.eingangsfeuerwerkBrautpaar : ''
-        ].filter(Boolean),
-        extras: [
-          formData.helikopterlandung ? serviceLabels.helikopterlandung : '',
-          formData.obstKuchenbuffetTatli ? serviceLabels.obstKuchenbuffetTatli : '',
-          formData.cigkoefteTischservice ? serviceLabels.cigkoefteTischservice : '',
-          formData.suppeHauptgang ? serviceLabels.suppeHauptgang : '',
-          formData.cocktailEmpfang ? serviceLabels.cocktailEmpfang : ''
-        ].filter(Boolean)
-      };
-
-    // Customer-Objekt aus persönlichen Kundeninformationen
+      // Customer-Objekt aus persönlichen Kundeninformationen
       // Nur die 8 angeforderten Felder aus dem Formular übernehmen
-    const customerName = `${formData.firstName} ${formData.lastName}`.trim();
+      const customerName = `${formData.firstName} ${formData.lastName}`.trim();
       
-    const newCustomer: Omit<Customer, 'id'> = {
+      const newCustomer: Omit<Customer, 'id'> = {
         // Die 8 benötigten Felder aus dem Formular
         firstName: formData.firstName || '',
         lastName: formData.lastName || '',
@@ -611,7 +496,7 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
         zipAndCity: formData.zipAndCity || '',
         notes: formData.notes || '',
         // Pflichtfelder für Interface (minimal gesetzt)
-      name: customerName,
+        name: customerName,
         company: formData.company || '',
         address: composeAddress(formData.streetAndNumber, formData.zipAndCity),
         addressBride: '',
@@ -633,149 +518,18 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
       const eventId = await handleEventSubmit(customerId);
       console.log('Event erfolgreich in Firebase gespeichert mit ID:', eventId);
 
+      // Customer mit Event-ID in Firebase aktualisieren
+      await customerService.updateCustomer(customerId, { events: [eventId] });
+      console.log('Customer in Firebase mit Event-ID aktualisiert');
+
       // Formular zurücksetzen
       handleClose();
-
-      // Services als Array für serviceLeistungen
-      const serviceLeistungenArray: string[] = [
-        ...services.tischaufstellung,
-        ...services.essenCatering,
-        ...services.getraenke,
-        ...services.torte,
-        ...services.service,
-        ...services.videoFotografie,
-        ...services.musik,
-        ...services.dekoEffekte,
-        ...services.extras
-      ];
-
-      // Event-Hall aus eventsaal1 und eventsaal2 zusammenstellen
-      const eventHallArray: string[] = [];
-      if (formData.eventsaal1) eventHallArray.push('Event Saal -1-');
-      if (formData.eventsaal2) eventHallArray.push('Event Saal -2-');
-      const eventHall = eventHallArray.join(', ');
-
-      // Event-Objekt (für App.tsx Kompatibilität)
-      const newEvent: Omit<Event, 'id'> & {
-        streetAndNumber?: string;
-        zipAndCity?: string;
-        eventDate?: string;
-        weekday?: string;
-        eventHall?: string;
-        serviceKosten?: string;
-        serviceLeistungen?: string[];
-      } = {
-      title: `${customerName} - ${formData.veranstaltungsart}`,
-      date: formData.eventDate.toISOString().split('T')[0],
-      time: '16:00-24:00',
-      room: eventHall,
-      status: 'planned',
-      customerId: customerId,
-      customer: customerName,
-      description: `Service-Angebot Details:\nVeranstaltungsart: ${formData.veranstaltungsart}\nPersonenanzahl: ${formData.personenanzahl}\nWochentag: ${formData.wochentag}\nAngebotssumme: ${formData.angebotssumme}€\nSaalmiete: ${formData.saalmiete}€\nService: ${formData.service}€\nGesamtpreis: ${formData.gesamtpreis}€\nAnzahlung: ${formData.anzahlung}€\nRestzahlung: ${formData.restzahlung}€`,
-      files: [],
-      assignedStaff: [],
-      comments: [],
       
-      // ALLE persönlichen Kundeninformationen aus Service-Angebot
-      firstName: formData.firstName || '',
-      lastName: formData.lastName || '',
-      company: formData.company || '',
-      email: formData.email || '',
-      phone: formData.phone || '',
-      mobile: formData.mobile || '',
-      notes: formData.notes || '',
-      address: formData.streetAndNumber || formData.addressBride || formData.addressGroom || '',
-      addressCity: formData.zipAndCity,
-      // Zusätzliche Felder für EventDetail
-      streetAndNumber: formData.streetAndNumber || '',
-      zipAndCity: formData.zipAndCity || '',
-      addressBride: formData.addressBride,
-      addressGroom: formData.addressGroom,
-      nationalityBride: formData.nationalityBride,
-      nationalityGroom: formData.nationalityGroom,
-      ageBride: formData.ageBride,
-      ageGroom: formData.ageGroom,
+      // PDF-Dialog anzeigen
+      setShowDownloadDialog(true);
       
-      // Service-Angebot Felder
-      guestCount: formData.personenanzahl,
-      kosten: formData.gesamtpreis,
-      // Event Details - DEUTSCHE FELDNAMEN
-      personenanzahl: formData.personenanzahl || '',
-      veranstaltungsart: formData.veranstaltungsart || '',
-      eventDate: formData.eventDate.toISOString().split('T')[0] || '',
-      weekday: formData.wochentag || '',
-      eventHall: eventHall,
-      eventsaal1: formData.eventsaal1,
-      eventsaal2: formData.eventsaal2,
-      veranstaltungsdatum: formData.eventDate.toISOString().split('T')[0],
-      wochentag: formData.wochentag,
-      // Kostenübersicht - DEUTSCHE FELDNAMEN
-      angebotssumme: formData.angebotssumme || '',
-      saalmiete: formData.saalmiete || '',
-      service: formData.service || '',
-      serviceKosten: formData.service || '',
-      gesamtpreis: formData.gesamtpreis || '',
-      anzahlung: formData.anzahlung || '',
-      restzahlung: formData.restzahlung || '',
-      // Service-Leistungen als Array
-      serviceLeistungen: serviceLeistungenArray,
-      // Tischaufstellung
-      rundeTische: formData.rundeTische,
-      eckigeTische: formData.eckigeTische,
-      // Essen & Catering
-      etSoteHaehnchengeschnetzeltes: formData.etSoteHaehnchengeschnetzeltes,
-      tavukSoteRindergulasch: formData.tavukSoteRindergulasch,
-      halbesHaehnchen: formData.halbesHaehnchen,
-      reis: formData.reis,
-      gemuese: formData.gemuese,
-      salatJahreszeit: formData.salatJahreszeit,
-      pommesSalzkartoffel: formData.pommesSalzkartoffel,
-      antipastiVorspeisenBrot: formData.antipastiVorspeisenBrot,
-      knabbereienCerez: formData.knabbereienCerez,
-      obstschale: formData.obstschale,
-      nachtischBaklava: formData.nachtischBaklava,
-      // Getränke
-      teeKaffeeservice: formData.teeKaffeeservice,
-      softgetraenkeMineralwasser: formData.softgetraenkeMineralwasser,
-      // Torte
-      hochzeitstorte3Etagen: formData.hochzeitstorte3Etagen,
-      hochzeitstorteFlach: formData.hochzeitstorteFlach,
-      // Service
-      standardDekoration: formData.standardDekoration,
-      serviceAllgemein: formData.serviceAllgemein,
-      bandDj: formData.bandDj,
-      // Video & Fotografie
-      videoKameraKranHDOhne: formData.videoKameraKranHDOhne,
-      videoKameraKranHDMit: formData.videoKameraKranHDMit,
-      videoKameraKranHDMitBrautigam: formData.videoKameraKranHDMitBrautigam,
-      fotoshootingUSB: formData.fotoshootingUSB,
-      weddingStoryClip: formData.weddingStoryClip,
-      fotoalbum: formData.fotoalbum,
-      // Musik
-      davulZurna4Stunden: formData.davulZurna4Stunden,
-      davulZurnaMitBrautabholung: formData.davulZurnaMitBrautabholung,
-      // Dekoration & Effekte
-      saeulenabgrenzungBlumenFeuerwerk: formData.saeulenabgrenzungBlumenFeuerwerk,
-      saeulenabgrenzungKuchenAnschneiden: formData.saeulenabgrenzungKuchenAnschneiden,
-      eingangsfeuerwerkBrautpaar: formData.eingangsfeuerwerkBrautpaar,
-      // Extras
-      helikopterlandung: formData.helikopterlandung,
-      obstKuchenbuffetTatli: formData.obstKuchenbuffetTatli,
-      cigkoefteTischservice: formData.cigkoefteTischservice,
-      suppeHauptgang: formData.suppeHauptgang,
-      cocktailEmpfang: formData.cocktailEmpfang,
-      // Unterschrift
-      signature: formData.signature,
-      angebotAngenommen: formData.angebotAngenommen,
-      datumUnterschriftKunde: formData.datumUnterschriftKunde,
-      datumUnterschriftBellavue: formData.datumUnterschriftBellavue
-    };
-
-    // Daten sofort speichern, unabhängig von PDF-Aktion
-    onSubmit(newEvent, newCustomer);
-      
-    setShowDownloadDialog(true);
+      // WICHTIG: onSubmit NICHT mehr aufrufen, da wir bereits direkt in Firebase gespeichert haben
+      // Die Daten werden über die Firebase Real-time Listeners automatisch geladen
     } catch (error) {
       console.error('Fehler beim Speichern:', error);
       console.error('Fehlerdetails:', {
