@@ -2,8 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // Hilfsfunktion: Prüft ob User existiert und welche Rolle er hat
+    // WICHTIG: Muss fehlertolerant sein, falls User-Dokument noch nicht existiert
     function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc != null && userDoc.data != null ? userDoc.data.role : null;
     }
     
     function isAdmin() {
@@ -11,13 +13,19 @@ service cloud.firestore {
     }
     
     function isAuthenticatedUser() {
-      return request.auth != null && (getUserRole() == 'admin' || getUserRole() == 'user');
+      let role = getUserRole();
+      return request.auth != null && (role == 'admin' || role == 'user');
     }
     
-    // Users Collection - Nur Admins können User verwalten
+    // Users Collection
+    // - User kann sein eigenes Dokument lesen
+    // - User kann sein eigenes Dokument beim ersten Login schreiben (erstellen)
+    // - Admins können alle User verwalten
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if isAdmin();
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
     }
     
     // Events Collection
