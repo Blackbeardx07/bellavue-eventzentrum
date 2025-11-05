@@ -623,33 +623,14 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onSubmit, initialD
       };
 
       // Customer in Firebase speichern
-      let customerId: string;
-      try {
-        console.log('Speichere Customer in Firebase...', newCustomer);
-        customerId = await customerService.createCustomer(newCustomer);
-        console.log('Customer erfolgreich in Firebase gespeichert mit ID:', customerId);
-      } catch (firebaseError) {
-        console.warn('Firebase-Speicherung fehlgeschlagen, verwende localStorage als Fallback:', firebaseError);
-        // Fallback: Customer lokal speichern
-        customerId = Date.now().toString() + Math.random().toString(36).substr(2, 6);
-        const customerWithId: Customer = { ...newCustomer, id: customerId };
-        const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
-        existingCustomers.push(customerWithId);
-        localStorage.setItem('bellavue-customers', JSON.stringify(existingCustomers));
-        console.log('Customer lokal gespeichert mit ID:', customerId);
-      }
+      console.log('Speichere Customer in Firebase...', newCustomer);
+      const customerId = await customerService.createCustomer(newCustomer);
+      console.log('Customer erfolgreich in Firebase gespeichert mit ID:', customerId);
 
       // Event direkt in Firebase speichern
-      let eventId: string;
-      try {
-        console.log('Speichere Event in Firebase...');
-        eventId = await handleEventSubmit(customerId);
-        console.log('Event erfolgreich in Firebase gespeichert mit ID:', eventId);
-      } catch (firebaseError) {
-        console.warn('Firebase-Event-Speicherung fehlgeschlagen, verwende localStorage als Fallback:', firebaseError);
-        // Fallback: Event lokal speichern (wird später von App.tsx handleNewEvent gemacht)
-        eventId = '';
-      }
+      console.log('Speichere Event in Firebase...');
+      const eventId = await handleEventSubmit(customerId);
+      console.log('Event erfolgreich in Firebase gespeichert mit ID:', eventId);
 
       // Services als Array für serviceLeistungen
       const serviceLeistungenArray: string[] = [

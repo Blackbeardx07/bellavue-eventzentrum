@@ -321,66 +321,32 @@ function App() {
         id: customerId
       };
 
-      // SCHRITT 1B: Customer in Firebase speichern (mit Fallback zu localStorage)
-      let savedCustomerId = customerId;
-      try {
-        console.log('Speichere Customer in Firebase...', customerToCreate);
-        savedCustomerId = await customerService.createCustomer(customerToCreate);
-        console.log('Customer erfolgreich in Firebase gespeichert mit ID:', savedCustomerId);
-        customerWithId.id = savedCustomerId;
-      } catch (firebaseError) {
-        console.warn('Firebase-Customer-Speicherung fehlgeschlagen, verwende localStorage als Fallback:', firebaseError);
-        // Fallback: Customer lokal speichern
-        const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
-        existingCustomers.push(customerWithId);
-        localStorage.setItem('bellavue-customers', JSON.stringify(existingCustomers));
-        console.log('Customer lokal gespeichert mit ID:', savedCustomerId);
-      }
+      // SCHRITT 1B: Customer in Firebase speichern
+      console.log('Speichere Customer in Firebase...', customerToCreate);
+      const savedCustomerId = await customerService.createCustomer(customerToCreate);
+      console.log('Customer erfolgreich in Firebase gespeichert mit ID:', savedCustomerId);
+      customerWithId.id = savedCustomerId;
 
-      // SCHRITT 2: Event in Firebase speichern (mit Fallback zu localStorage)
+      // SCHRITT 2: Event in Firebase speichern
       console.log('Erstelle Event mit customerId:', savedCustomerId);
-      let eventId: string;
       const eventToSave: Omit<Event, 'id'> = {
         ...newEvent,
         customerId: savedCustomerId
       };
 
-      try {
-        console.log('Speichere Event in Firebase...', eventToSave);
-        eventId = await eventService.createEvent(eventToSave);
-        console.log('Event erfolgreich in Firebase gespeichert mit ID:', eventId);
-      } catch (firebaseError) {
-        console.warn('Firebase-Event-Speicherung fehlgeschlagen, verwende localStorage als Fallback:', firebaseError);
-        // Fallback: Event lokal speichern
-        eventId = Date.now().toString() + Math.random().toString(36).substr(2, 6);
-        const eventWithId: Event = {
-          ...eventToSave,
-          id: eventId
-        };
-        const existingEvents = JSON.parse(localStorage.getItem('bellavue-events') || '[]');
-        existingEvents.push(eventWithId);
-        localStorage.setItem('bellavue-events', JSON.stringify(existingEvents));
-        console.log('Event lokal gespeichert mit ID:', eventId);
-      }
+      console.log('Speichere Event in Firebase...', eventToSave);
+      const eventId = await eventService.createEvent(eventToSave);
+      console.log('Event erfolgreich in Firebase gespeichert mit ID:', eventId);
 
       const eventWithId: Event = {
         ...eventToSave,
         id: eventId
       };
 
-      // SCHRITT 3: Customer mit Event-ID aktualisieren (in Firebase und localStorage)
+      // SCHRITT 3: Customer mit Event-ID in Firebase aktualisieren
       customerWithId.events = [eventId];
-      try {
-        await customerService.updateCustomer(savedCustomerId, { events: [eventId] });
-        console.log('Customer in Firebase mit Event-ID aktualisiert');
-      } catch (firebaseError) {
-        console.warn('Firebase-Customer-Update fehlgeschlagen, verwende localStorage:', firebaseError);
-        const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
-        const updatedCustomers = existingCustomers.map((c: Customer) => 
-          c.id === savedCustomerId ? customerWithId : c
-        );
-        localStorage.setItem('bellavue-customers', JSON.stringify(updatedCustomers));
-      }
+      await customerService.updateCustomer(savedCustomerId, { events: [eventId] });
+      console.log('Customer in Firebase mit Event-ID aktualisiert');
 
       // SCHRITT 4: UI aktualisieren
       setCustomers(prev => {
@@ -443,159 +409,159 @@ function App() {
 
   const handleEventSave = async (event: Event) => {
     try {
-      console.log('Event wird lokal aktualisiert:', event.id);
+      console.log('Event wird in Firebase aktualisiert:', event.id);
       
-      // Event in localStorage aktualisieren
-      const existingEvents = JSON.parse(localStorage.getItem('bellavue-events') || '[]');
-      const updatedEvents = existingEvents.map((e: Event) => 
-        e.id === event.id ? event : e
-      );
-      localStorage.setItem('bellavue-events', JSON.stringify(updatedEvents));
+      // Event in Firebase aktualisieren
+      const { id, ...eventData } = event;
+      await eventService.updateEvent(id, eventData);
+      console.log('Event erfolgreich in Firebase aktualisiert:', id);
       
       // Customer erstellen oder aktualisieren, wenn customerId vorhanden
       if (event.customerId) {
-        const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
-        const existingCustomer = existingCustomers.find((c: Customer) => c.id === event.customerId);
-        
-        if (existingCustomer) {
-          // Customer aktualisieren
-          const updatedCustomer: Customer = {
-            ...existingCustomer,
-            firstName: event.firstName || existingCustomer.firstName || "",
-            lastName: event.lastName || existingCustomer.lastName || "",
-            email: event.email || existingCustomer.email || "",
-            phone: event.phone || existingCustomer.phone || "",
-            mobile: (event as any).mobile || event.mobile || existingCustomer.mobile || "",
-            streetAndNumber: (event as any).streetAndNumber || (event as any).address || existingCustomer.streetAndNumber || "",
-            zipAndCity: (event as any).zipAndCity || (event as any).addressCity || existingCustomer.zipAndCity || "",
-            notes: event.notes || existingCustomer.notes || "",
-            address:
-              (existingCustomer.address && existingCustomer.address.trim())
-                ? existingCustomer.address
-                : composeAddress(
-                    (event as any).streetAndNumber || (event as any).address,
-                    (event as any).zipAndCity || (event as any).addressCity
-                  ),
-          };
+        try {
+          const existingCustomer = await customerService.getCustomerById(event.customerId);
           
-          const updatedCustomers = existingCustomers.map((c: Customer) => 
-            c.id === event.customerId ? updatedCustomer : c
-          );
-          localStorage.setItem('bellavue-customers', JSON.stringify(updatedCustomers));
-          
-          // UI State aktualisieren
-          setCustomers(prev => prev.map(c => c.id === event.customerId ? updatedCustomer : c));
-        } else {
-          // Neuer Customer erstellen
-          const customerName = `${event.firstName || ''} ${event.lastName || ''}`.trim() || event.customer || '';
-          const newCustomer: Customer = {
-            id: event.customerId,
-            name: customerName,
-            firstName: event.firstName || "",
-            lastName: event.lastName || "",
-            company: event.company || "",
-            email: event.email || "",
-            phone: event.phone || "",
-            mobile: (event as any).mobile || event.mobile || "",
-            streetAndNumber: (event as any).streetAndNumber || (event as any).address || "",
-            zipAndCity: (event as any).zipAndCity || (event as any).addressCity || "",
-            notes: event.notes || "",
-            address: composeAddress(
-              (event as any).streetAndNumber || (event as any).address,
-              (event as any).zipAndCity || (event as any).addressCity
-            ),
-            addressBride: "",
-            addressGroom: "",
-            nationalityBride: "",
-            nationalityGroom: "",
-            ageBride: "",
-            ageGroom: "",
-            events: [event.id],
-            contactPerson: "",
-            budget: "",
-            guestCount: "",
-            specialRequirements: "",
-            preferences: {
-              catering: false,
-              decoration: false,
-              music: false,
-              photography: false
-            }
-          };
-          
-          existingCustomers.push(newCustomer);
-          localStorage.setItem('bellavue-customers', JSON.stringify(existingCustomers));
-          
-          // UI State aktualisieren
-          setCustomers(prev => {
-            const updated = prev.filter(c => c.id !== event.customerId);
-            return [...updated, newCustomer];
-          });
+          if (existingCustomer) {
+            // Customer in Firebase aktualisieren
+            const updatedCustomerData: Partial<Customer> = {
+              firstName: event.firstName || existingCustomer.firstName || "",
+              lastName: event.lastName || existingCustomer.lastName || "",
+              email: event.email || existingCustomer.email || "",
+              phone: event.phone || existingCustomer.phone || "",
+              mobile: (event as any).mobile || event.mobile || existingCustomer.mobile || "",
+              streetAndNumber: (event as any).streetAndNumber || (event as any).address || existingCustomer.streetAndNumber || "",
+              zipAndCity: (event as any).zipAndCity || (event as any).addressCity || existingCustomer.zipAndCity || "",
+              notes: event.notes || existingCustomer.notes || "",
+              address:
+                (existingCustomer.address && existingCustomer.address.trim())
+                  ? existingCustomer.address
+                  : composeAddress(
+                      (event as any).streetAndNumber || (event as any).address,
+                      (event as any).zipAndCity || (event as any).addressCity
+                    ),
+            };
+            
+            await customerService.updateCustomer(event.customerId, updatedCustomerData);
+            console.log('Customer erfolgreich in Firebase aktualisiert:', event.customerId);
+            
+            // UI State aktualisieren
+            const updatedCustomer: Customer = { ...existingCustomer, ...updatedCustomerData };
+            setCustomers(prev => prev.map(c => c.id === event.customerId ? updatedCustomer : c));
+          } else {
+            // Neuer Customer in Firebase erstellen
+            const customerName = `${event.firstName || ''} ${event.lastName || ''}`.trim() || event.customer || '';
+            const newCustomer: Omit<Customer, 'id'> = {
+              name: customerName,
+              firstName: event.firstName || "",
+              lastName: event.lastName || "",
+              company: event.company || "",
+              email: event.email || "",
+              phone: event.phone || "",
+              mobile: (event as any).mobile || event.mobile || "",
+              streetAndNumber: (event as any).streetAndNumber || (event as any).address || "",
+              zipAndCity: (event as any).zipAndCity || (event as any).addressCity || "",
+              notes: event.notes || "",
+              address: composeAddress(
+                (event as any).streetAndNumber || (event as any).address,
+                (event as any).zipAndCity || (event as any).addressCity
+              ),
+              addressBride: "",
+              addressGroom: "",
+              nationalityBride: "",
+              nationalityGroom: "",
+              ageBride: "",
+              ageGroom: "",
+              events: [event.id],
+              contactPerson: "",
+              budget: "",
+              guestCount: "",
+              specialRequirements: "",
+              preferences: {
+                catering: false,
+                decoration: false,
+                music: false,
+                photography: false
+              }
+            };
+            
+            const newCustomerId = await customerService.createCustomer(newCustomer);
+            console.log('Customer erfolgreich in Firebase erstellt:', newCustomerId);
+            
+            // UI State aktualisieren
+            const customerWithId: Customer = { ...newCustomer, id: newCustomerId };
+            setCustomers(prev => {
+              const updated = prev.filter(c => c.id !== event.customerId);
+              return [...updated, customerWithId];
+            });
+          }
+        } catch (customerError) {
+          console.error('Fehler beim Aktualisieren/Erstellen des Customers in Firebase:', customerError);
+          // Customer-Fehler nicht blockieren, Event wurde bereits gespeichert
         }
       }
       
-      // UI State aktualisieren
+      // UI State aktualisieren (Firebase Real-time Listener wird das automatisch aktualisieren)
       setEvents(prev => prev.map(e => e.id === event.id ? event : e));
       
-      console.log('Event erfolgreich lokal aktualisiert:', event.id);
     } catch (error) {
-      console.error('Fehler beim Aktualisieren des Events:', error);
+      console.error('Fehler beim Aktualisieren des Events in Firebase:', error);
+      alert('Fehler beim Speichern des Events: ' + (error instanceof Error ? error.message : String(error)));
+      throw error;
     }
   };
 
   const handleEventDelete = async (event: Event) => {
     try {
-      console.log('Event wird lokal gelöscht:', event.id);
+      console.log('Event wird in Firebase gelöscht:', event.id);
       
-      // Event aus localStorage entfernen
-      const existingEvents = JSON.parse(localStorage.getItem('bellavue-events') || '[]');
-      const filteredEvents = existingEvents.filter((e: Event) => e.id !== event.id);
-      localStorage.setItem('bellavue-events', JSON.stringify(filteredEvents));
+      // Event aus Firebase löschen
+      await eventService.deleteEvent(event.id);
+      console.log('Event erfolgreich in Firebase gelöscht:', event.id);
       
-      // UI State aktualisieren
+      // UI State wird automatisch durch Firebase Real-time Listener aktualisiert
       setEvents(prev => prev.filter(e => e.id !== event.id));
       
-      console.log('Event erfolgreich lokal gelöscht:', event.id);
     } catch (error) {
-      console.error('Fehler beim Löschen des Events:', error);
+      console.error('Fehler beim Löschen des Events in Firebase:', error);
+      alert('Fehler beim Löschen des Events: ' + (error instanceof Error ? error.message : String(error)));
+      throw error;
     }
   };
 
   const handleCustomerSave = async (customer: Customer) => {
     try {
-      console.log('Kunde wird lokal aktualisiert:', customer.id);
+      console.log('Kunde wird in Firebase aktualisiert:', customer.id);
       
-      // Kunde in localStorage aktualisieren
-      const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
-      const updatedCustomers = existingCustomers.map((c: Customer) => 
-        c.id === customer.id ? customer : c
-      );
-      localStorage.setItem('bellavue-customers', JSON.stringify(updatedCustomers));
+      // Kunde in Firebase aktualisieren
+      const { id, ...customerData } = customer;
+      await customerService.updateCustomer(id, customerData);
+      console.log('Kunde erfolgreich in Firebase aktualisiert:', id);
       
-      // UI State aktualisieren
+      // UI State wird automatisch durch Firebase Real-time Listener aktualisiert
       setCustomers(prev => prev.map(c => c.id === customer.id ? customer : c));
       
-      console.log('Kunde erfolgreich lokal aktualisiert:', customer.id);
     } catch (error) {
-      console.error('Fehler beim Aktualisieren des Kunden:', error);
+      console.error('Fehler beim Aktualisieren des Kunden in Firebase:', error);
+      alert('Fehler beim Speichern des Kunden: ' + (error instanceof Error ? error.message : String(error)));
+      throw error;
     }
   };
 
   const handleCustomerDelete = async (customer: Customer) => {
     try {
-      console.log('Kunde wird lokal gelöscht:', customer.id);
+      console.log('Kunde wird in Firebase gelöscht:', customer.id);
       
-      // Kunde aus localStorage entfernen
-      const existingCustomers = JSON.parse(localStorage.getItem('bellavue-customers') || '[]');
-      const filteredCustomers = existingCustomers.filter((c: Customer) => c.id !== customer.id);
-      localStorage.setItem('bellavue-customers', JSON.stringify(filteredCustomers));
+      // Kunde aus Firebase löschen
+      await customerService.deleteCustomer(customer.id);
+      console.log('Kunde erfolgreich in Firebase gelöscht:', customer.id);
       
-      // UI State aktualisieren
+      // UI State wird automatisch durch Firebase Real-time Listener aktualisiert
       setCustomers(prev => prev.filter(c => c.id !== customer.id));
       
-      console.log('Kunde erfolgreich lokal gelöscht:', customer.id);
     } catch (error) {
-      console.error('Fehler beim Löschen des Kunden:', error);
+      console.error('Fehler beim Löschen des Kunden in Firebase:', error);
+      alert('Fehler beim Löschen des Kunden: ' + (error instanceof Error ? error.message : String(error)));
+      throw error;
     }
   };
 
