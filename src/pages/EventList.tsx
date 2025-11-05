@@ -30,7 +30,7 @@ import {
   Delete as DeleteIcon,
   Download as DownloadIcon
 } from '@mui/icons-material';
-import type { Event } from '../types';
+import type { Event, EventStatus } from '../types';
 import * as XLSX from 'xlsx';
 import EventForm from '../components/EventForm';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -41,9 +41,10 @@ interface EventListProps {
   events: Event[];
   onNewEvent: (event: Omit<Event, 'id'>, customer: any) => void;
   onDelete?: (event: Event) => void;
+  onSave?: (event: Event) => void;
 }
 
-const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) => {
+const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete, onSave }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
@@ -116,6 +117,11 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
     setConfirmDialog({ open: false, event: null });
   };
 
+  const handleStatusChange = (event: Event, newStatus: EventStatus) => {
+    const updatedEvent = { ...event, status: newStatus };
+    onSave?.(updatedEvent);
+  };
+
   const handleExportExcel = () => {
     const data = filteredEvents.map(({ id, title, date, time, room, customer, status, description }) => ({
       ID: id,
@@ -144,7 +150,7 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
       {/* Search and Filters */}
       <Box sx={{ mb: 3 }}>
         <Stack spacing={2}>
@@ -278,14 +284,35 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 <strong>Raum:</strong> {event.room}
               </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                <strong>Status:</strong> {getStatusLabel(event.status)}
-              </Typography>
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                  <strong>Status:</strong>
+                </Typography>
+                {role === 'admin' ? (
+                  <Select
+                    value={event.status}
+                    onChange={(e) => handleStatusChange(event, e.target.value as EventStatus)}
+                    size="small"
+                    fullWidth
+                    sx={{ mt: 0.5 }}
+                  >
+                    <MenuItem value="planned">Geplant</MenuItem>
+                    <MenuItem value="confirmed">Bestätigt</MenuItem>
+                    <MenuItem value="cancelled">Abgesagt</MenuItem>
+                  </Select>
+                ) : (
+                  <Chip 
+                    label={getStatusLabel(event.status)}
+                    color={getStatusColor(event.status)}
+                    size="small"
+                  />
+                )}
+              </Box>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 <strong>Kunde:</strong> {event.customer}
               </Typography>
             </CardContent>
-            <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+            <CardActions sx={{ justifyContent: 'space-between', flexWrap: 'wrap', px: 2, pb: 2, gap: 1 }}>
               <Button size="small" onClick={() => handleViewEvent(event)}>
                 Anzeigen
               </Button>
@@ -294,7 +321,7 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
                   <Button size="small" onClick={() => handleEditEvent(event)}>
                     Bearbeiten
                   </Button>
-                  <Button size="small" onClick={() => handleDeleteEvent(event)}>
+                  <Button size="small" color="error" onClick={() => handleDeleteEvent(event)}>
                     Löschen
                   </Button>
                 </>
@@ -322,28 +349,66 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
             <TableBody>
               {filteredEvents.map((event) => (
                 <TableRow key={event.id} hover>
-                  <TableCell>{event.title}</TableCell>
-                  <TableCell>
-                    {formatDate(event.date)}
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                    {event.title}
                   </TableCell>
-                  <TableCell>{event.time}</TableCell>
-                  <TableCell>{event.room}</TableCell>
                   <TableCell>
-                    <Chip 
-                      label={getStatusLabel(event.status)}
-                      color={getStatusColor(event.status)}
-                      size="small"
-                    />
+                    <Box>
+                      {formatDate(event.date)}
+                      <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'block', md: 'none' }, mt: 0.5 }}>
+                        {event.title}
+                      </Typography>
+                    </Box>
                   </TableCell>
-                  <TableCell>{event.customer}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
+                    {event.time}
+                  </TableCell>
+                  <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
+                    {event.room}
+                  </TableCell>
+                  <TableCell>
+                    {role === 'admin' ? (
+                      <Select
+                        value={event.status}
+                        onChange={(e) => handleStatusChange(event, e.target.value as EventStatus)}
+                        size="small"
+                        sx={{ 
+                          minWidth: { xs: 100, sm: 120 }, 
+                          height: 32,
+                          fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                        }}
+                      >
+                        <MenuItem value="planned">Geplant</MenuItem>
+                        <MenuItem value="confirmed">Bestätigt</MenuItem>
+                        <MenuItem value="cancelled">Abgesagt</MenuItem>
+                      </Select>
+                    ) : (
+                      <Chip 
+                        label={getStatusLabel(event.status)}
+                        color={getStatusColor(event.status)}
+                        size="small"
+                        sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                    {event.customer}
+                  </TableCell>
                   <TableCell align="right">
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: { xs: 'flex-end', sm: 'center' }, 
+                      gap: { xs: 0.5, sm: 1 },
+                      flexWrap: 'nowrap'
+                    }}>
                       <IconButton
                         size="small"
                         onClick={() => handleViewEvent(event)}
                         title="Event anzeigen"
+                        sx={{ padding: { xs: '4px', sm: '8px' } }}
                       >
-                        <ViewIcon />
+                        <ViewIcon fontSize="small" />
                       </IconButton>
                       {role === 'admin' && (
                         <>
@@ -351,16 +416,18 @@ const EventList: React.FC<EventListProps> = ({ events, onNewEvent, onDelete }) =
                             size="small"
                             onClick={() => handleEditEvent(event)}
                             title="Event bearbeiten"
+                            sx={{ padding: { xs: '4px', sm: '8px' } }}
                           >
-                            <EditIcon />
+                            <EditIcon fontSize="small" />
                           </IconButton>
                           <IconButton
                             size="small"
                             onClick={() => handleDeleteEvent(event)}
                             title="Event löschen"
                             color="error"
+                            sx={{ padding: { xs: '4px', sm: '8px' } }}
                           >
-                            <DeleteIcon />
+                            <DeleteIcon fontSize="small" />
                           </IconButton>
                         </>
                       )}

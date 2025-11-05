@@ -11,7 +11,8 @@ import {
   MenuItem,
   FormGroup,
   FormControlLabel,
-  Checkbox
+  Checkbox,
+  Chip
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -19,10 +20,11 @@ import {
   Edit as EditIcon,
   PictureAsPdf as PdfIcon
 } from '@mui/icons-material';
-import type { Event } from '../types';
+import type { Event, EventStatus } from '../types';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
+import { getStatusLabel, getStatusColor } from '../utils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -69,6 +71,12 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
     setConfirmDialog(false);
   };
 
+  const handleStatusChange = async (newStatus: EventStatus) => {
+    const updatedEvent = { ...editedEvent, status: newStatus };
+    setEditedEvent(updatedEvent);
+    onSave(updatedEvent);
+  };
+
   const handleExportPDF = async () => {
     if (!contentRef.current) return;
 
@@ -105,27 +113,64 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Paper sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, width: '100%' }}>
         {/* Header */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" component="h1">
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          mb: 3,
+          gap: 2
+        }}>
+          <Typography 
+            variant="h4" 
+            component="h1"
+            sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}
+          >
             {isEditing ? 'Service-Angebot bearbeiten' : 'Service-Angebot Details'}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          
+          {/* Status-Änderung (nur für Admin, auch im View-Modus) */}
+          {!isEditing && role === 'admin' && (
+            <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
+              <FormControl fullWidth size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
+                <InputLabel>Status ändern</InputLabel>
+                <Select
+                  value={editedEvent.status}
+                  onChange={(e) => handleStatusChange(e.target.value as EventStatus)}
+                  label="Status ändern"
+                >
+                  <MenuItem value="planned">Geplant</MenuItem>
+                  <MenuItem value="confirmed">Bestätigt</MenuItem>
+                  <MenuItem value="cancelled">Abgesagt</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          )}
+          
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 1, 
+            flexWrap: 'wrap',
+            width: { xs: '100%', sm: 'auto' },
+            '& > *': { flex: { xs: '1 1 auto', sm: '0 0 auto' } }
+          }}>
             {isEditing ? (
               <>
                 <Button
                   variant="contained"
                   startIcon={<SaveIcon />}
                   onClick={handleSave}
-                  sx={{ bgcolor: 'success.main' }}
+                  sx={{ bgcolor: 'success.main', flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
                 >
                   Speichern
                 </Button>
                 <Button
                   variant="outlined"
                   onClick={handleCancel}
+                  sx={{ flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
                 >
                   Abbrechen
                 </Button>
@@ -137,6 +182,7 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                     variant="contained"
                     startIcon={<EditIcon />}
                     onClick={() => setIsEditing(true)}
+                    sx={{ flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
                   >
                     Bearbeiten
                   </Button>
@@ -145,8 +191,10 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                   variant="outlined"
                   startIcon={<PdfIcon />}
                   onClick={handleExportPDF}
+                  sx={{ flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
                 >
-                  PDF Export
+                  <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>PDF Export</Box>
+                  <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>PDF</Box>
                 </Button>
               </>
             )}
@@ -156,12 +204,27 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                 color="error"
                 startIcon={<DeleteIcon />}
                 onClick={handleDelete}
+                sx={{ flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
               >
                 Löschen
               </Button>
             )}
           </Box>
         </Box>
+
+        {/* Status-Anzeige (nur im View-Modus) */}
+        {!isEditing && (
+          <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+            <Typography variant="body2" color="text.secondary">
+              Aktueller Status:
+            </Typography>
+            <Chip 
+              label={getStatusLabel(editedEvent.status)} 
+              color={getStatusColor(editedEvent.status)}
+              size="medium"
+            />
+          </Box>
+        )}
 
         {/* PDF Content */}
         <div ref={contentRef} style={{ padding: '20px', backgroundColor: 'white' }}>

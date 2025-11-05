@@ -601,6 +601,7 @@ function App() {
                         events={events} 
                         onNewEvent={handleNewEvent}
                         onDelete={role === 'admin' ? handleEventDelete : undefined}
+                        onSave={role === 'admin' ? handleEventSave : undefined}
                       />
                     } 
                   />
