@@ -18,7 +18,9 @@ import ConfirmDialog from './components/ConfirmDialog';
 import type { Event, Customer } from './types';
 import { eventService, customerService } from './firebase/firestore';
 import { auth } from './firebase/config'; // Firebase initialisieren
-import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from './firebase/config';
 import theme from './theme';
 
 // CustomerDetail wrapper component to handle routing
@@ -99,10 +101,10 @@ const EventDetailWrapper: React.FC<{
 export type UserRole = 'admin' | 'user' | null;
 interface AuthContextType {
   role: UserRole;
-  login: (username: string, password: string) => boolean;
-  logout: () => void;
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
 }
-const AuthContext = createContext<AuthContextType>({ role: null, login: () => false, logout: () => {} });
+const AuthContext = createContext<AuthContextType>({ role: null, login: async () => false, logout: async () => {} });
 export const useAuth = () => useContext(AuthContext);
 
 function App() {
@@ -120,71 +122,63 @@ function App() {
     return (localStorage.getItem('bellavue-role') as UserRole) || null;
   });
 
-  // Firebase Auth und Real-time Listeners
+  // Firebase Auth State Listener - Prüft ob User eingeloggt ist und lädt Rolle
   useEffect(() => {
-    console.log('Setting up Firebase auth and listeners...');
+    console.log('Setting up Firebase auth listeners...');
     
-    // Warten auf Firebase Initialisierung, dann authentifizieren
-    const initializeAuth = async () => {
-      // Warte kurz, damit Firebase vollständig initialisiert ist
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      try {
-        console.log('Attempting anonymous authentication...');
-        const userCredential = await signInAnonymously(auth);
-        console.log('Anonymous authentication successful:', userCredential.user.uid);
-        console.log('Auth token:', await userCredential.user.getIdToken());
-      } catch (error) {
-        console.error('Anonymous authentication failed:', error);
-        console.error('Error details:', error);
-        
-        // Mehrfache Versuche mit steigenden Verzögerungen
-        for (let i = 1; i <= 3; i++) {
-          setTimeout(async () => {
-            try {
-              console.log(`Retry authentication attempt ${i}...`);
-              await signInAnonymously(auth);
-              console.log(`Retry ${i} authentication successful`);
-            } catch (retryError) {
-              console.error(`Retry ${i} authentication failed:`, retryError);
-            }
-          }, i * 2000);
-        }
-      }
-    };
+    let unsubscribeEvents = () => {};
+    let unsubscribeCustomers = () => {};
     
-    initializeAuth();
-    
-    // Firebase Auth State Listener
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        console.log('User authenticated:', user.uid);
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        console.log('Firebase user authenticated:', firebaseUser.uid);
+        // Lade User-Rolle aus Firestore
         try {
-          const token = await user.getIdToken();
-          console.log('Current auth token:', token);
-        } catch (tokenError) {
-          console.error('Error getting token:', tokenError);
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            const userRole = userData.role as UserRole;
+            console.log('User role from Firestore:', userRole);
+            setRole(userRole);
+            localStorage.setItem('bellavue-role', userRole || '');
+            
+            // Events Listener - nur wenn User eingeloggt ist
+            unsubscribeEvents = eventService.onEventsChange((newEvents) => {
+              console.log('Events updated from Firebase:', newEvents);
+              setEvents(newEvents);
+            });
+
+            // Customers Listener - nur wenn User eingeloggt ist
+            unsubscribeCustomers = customerService.onCustomersChange((newCustomers) => {
+              console.log('Customers updated from Firebase:', newCustomers);
+              setCustomers(newCustomers);
+            });
+          } else {
+            console.log('User document not found in Firestore');
+            // Logout wenn kein User-Dokument existiert
+            await signOut(auth);
+            setRole(null);
+            localStorage.removeItem('bellavue-role');
+            unsubscribeEvents();
+            unsubscribeCustomers();
+          }
+        } catch (error) {
+          console.error('Error loading user role:', error);
+          await signOut(auth);
+          setRole(null);
+          localStorage.removeItem('bellavue-role');
+          unsubscribeEvents();
+          unsubscribeCustomers();
         }
       } else {
-        console.log('No user authenticated - attempting to sign in...');
-        try {
-          await signInAnonymously(auth);
-        } catch (error) {
-          console.error('Auto sign-in failed:', error);
-        }
+        console.log('No Firebase user authenticated');
+        setRole(null);
+        localStorage.removeItem('bellavue-role');
+        unsubscribeEvents();
+        unsubscribeCustomers();
       }
-    });
-    
-    // Events Listener
-    const unsubscribeEvents = eventService.onEventsChange((newEvents) => {
-      console.log('Events updated from Firebase:', newEvents);
-      setEvents(newEvents);
-    });
-
-    // Customers Listener
-    const unsubscribeCustomers = customerService.onCustomersChange((newCustomers) => {
-      console.log('Customers updated from Firebase:', newCustomers);
-      setCustomers(newCustomers);
     });
 
     // Cleanup listeners on unmount
@@ -565,29 +559,81 @@ function App() {
     }
   };
 
-  const login = (username: string, password: string) => {
-    // Trim whitespace und normalize
-    const trimmedUsername = username.trim();
-    const trimmedPassword = password.trim();
-    
-    // Admin Login (case-insensitive)
-    if (trimmedUsername.toLowerCase() === 'admin' && trimmedPassword === 'BellavueNokta2025#') {
-      setRole('admin');
-      localStorage.setItem('bellavue-role', 'admin');
+  const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      // Trim whitespace und normalize
+      const trimmedUsername = username.trim();
+      const trimmedPassword = password.trim();
+      
+      // Email-Adressen für Admin und Mitarbeiter
+      let email = '';
+      let userRole: UserRole = null;
+      
+      // Admin Login (case-insensitive)
+      if (trimmedUsername.toLowerCase() === 'admin' && trimmedPassword === 'BellavueNokta2025#') {
+        email = 'admin@bellavue-eventzentrum.de';
+        userRole = 'admin';
+      }
+      // Mitarbeiter Login (case-insensitive)
+      else if (trimmedUsername.toLowerCase() === 'mitarbeiter' && trimmedPassword === 'BellavueMitarbeiter2025#') {
+        email = 'mitarbeiter@bellavue-eventzentrum.de';
+        userRole = 'user';
+      }
+      else {
+        return false;
+      }
+      
+      // Firebase Authentication mit Email/Password
+      const userCredential = await signInWithEmailAndPassword(auth, email, trimmedPassword);
+      const firebaseUser = userCredential.user;
+      
+      // User-Dokument in Firestore erstellen/aktualisieren
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (!userDocSnap.exists()) {
+        // Neuer User - erstelle Dokument mit Rolle
+        await setDoc(userDocRef, {
+          email: email,
+          role: userRole,
+          createdAt: new Date().toISOString()
+        });
+        console.log('User document created in Firestore');
+      } else {
+        // Bestehender User - aktualisiere Rolle falls nötig
+        const existingData = userDocSnap.data();
+        if (existingData.role !== userRole) {
+          await setDoc(userDocRef, { ...existingData, role: userRole }, { merge: true });
+          console.log('User role updated in Firestore');
+        }
+      }
+      
+      // Rolle wird über onAuthStateChanged gesetzt
       return true;
+    } catch (error: any) {
+      console.error('Login error:', error);
+      
+      // Wenn User nicht existiert, erstelle ihn (nur beim ersten Login)
+      if (error.code === 'auth/user-not-found') {
+        // Für jetzt: User nicht gefunden = falsche Credentials
+        return false;
+      }
+      
+      return false;
     }
-    // Mitarbeiter Login (case-insensitive)
-    if (trimmedUsername.toLowerCase() === 'mitarbeiter' && trimmedPassword === 'BellavueMitarbeiter2025#') {
-      setRole('user');
-      localStorage.setItem('bellavue-role', 'user');
-      return true;
-    }
-    return false;
   };
 
-  const logout = () => {
-    setRole(null);
-    localStorage.removeItem('bellavue-role');
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      setRole(null);
+      localStorage.removeItem('bellavue-role');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback: auch ohne Firebase Logout
+      setRole(null);
+      localStorage.removeItem('bellavue-role');
+    }
   };
 
   // Daten werden über Firebase Real-time Listener geladen (siehe useEffect oben)
@@ -709,9 +755,11 @@ const LoginDialog: React.FC = () => {
     event.preventDefault();
   };
   
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!login(username, password)) {
+    setError('');
+    const success = await login(username, password);
+    if (!success) {
       setError('Falscher Benutzername oder Passwort');
     }
   };

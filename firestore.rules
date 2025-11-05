@@ -1,24 +1,41 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Events Collection - Erlaube Lese- und Schreibzugriff
-    // Option 1: Mit Authentifizierung (sicherer)
-    // match /events/{eventId} {
-    //   allow read, write: if request.auth != null;
-    // }
-    // Option 2: Ohne Authentifizierung (für interne Apps)
-    match /events/{eventId} {
-      allow read, write: if true;
+    // Hilfsfunktion: Prüft ob User existiert und welche Rolle er hat
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
     
-    // Customers Collection - Erlaube Lese- und Schreibzugriff
-    // Option 1: Mit Authentifizierung (sicherer)
-    // match /customers/{customerId} {
-    //   allow read, write: if request.auth != null;
-    // }
-    // Option 2: Ohne Authentifizierung (für interne Apps)
+    function isAdmin() {
+      return request.auth != null && getUserRole() == 'admin';
+    }
+    
+    function isAuthenticatedUser() {
+      return request.auth != null && (getUserRole() == 'admin' || getUserRole() == 'user');
+    }
+    
+    // Users Collection - Nur Admins können User verwalten
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if isAdmin();
+    }
+    
+    // Events Collection
+    // - Admin: Lesen und Schreiben
+    // - User (Mitarbeiter): Nur Lesen
+    // - Keine Authentifizierung: Kein Zugriff
+    match /events/{eventId} {
+      allow read: if isAuthenticatedUser();
+      allow write: if isAdmin();
+    }
+    
+    // Customers Collection
+    // - Admin: Lesen und Schreiben
+    // - User (Mitarbeiter): Nur Lesen
+    // - Keine Authentifizierung: Kein Zugriff
     match /customers/{customerId} {
-      allow read, write: if true;
+      allow read: if isAuthenticatedUser();
+      allow write: if isAdmin();
     }
     
     // Alle anderen Collections blockieren
