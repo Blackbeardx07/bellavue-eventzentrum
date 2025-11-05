@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Events Collection - Erlaube anonymen Benutzern alles
+    match /events/{eventId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Customers Collection - Erlaube anonymen Benutzern alles
+    match /customers/{customerId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Alle anderen Collections blockieren
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
