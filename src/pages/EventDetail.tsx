@@ -555,7 +555,7 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                         onChange={(e) => setEditedEvent(prev => ({ ...prev, halbesHaehnchen: e.target.checked }))}
                       />
                     }
-                    label="Halbes Hähnchen (Tischbuffet)"
+                    label="Halbes Hähnchen (Tischservice)"
                   />
                   <FormControlLabel
                     control={
@@ -565,7 +565,7 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                         onChange={(e) => setEditedEvent(prev => ({ ...prev, reis: e.target.checked }))}
                       />
                     }
-                    label="Reis & Gemüse (Tischservice)"
+                    label="Reis (Tischbuffet)"
                   />
                   <FormControlLabel
                     control={
@@ -575,7 +575,7 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                         onChange={(e) => setEditedEvent(prev => ({ ...prev, gemuese: e.target.checked }))}
                       />
                     }
-                    label="Gemüse (Tischservice)"
+                    label="Gemüse (Tischbuffet) oder"
                   />
                   <FormControlLabel
                     control={
@@ -663,7 +663,7 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                         onChange={(e) => setEditedEvent(prev => ({ ...prev, softgetraenkeMineralwasser: e.target.checked }))}
                       />
                     }
-                    label="Softgetränke & Mineralwasser (Tischservice)"
+                    label="Softgetränke und Mineralwasser (Tischservice ohne Limit)"
                   />
                 </FormGroup>
 
@@ -679,7 +679,7 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                         onChange={(e) => setEditedEvent(prev => ({ ...prev, hochzeitstorte3Etagen: e.target.checked }))}
                       />
                     }
-                    label="Hochzeitstorte 3 Etagen"
+                    label="Hochzeitstorte 3 Etagen (Geschmack nach Wahl) oder"
                   />
                   <FormControlLabel
                     control={
@@ -689,7 +689,7 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                         onChange={(e) => setEditedEvent(prev => ({ ...prev, hochzeitstorteFlach: e.target.checked }))}
                       />
                     }
-                    label="Hochzeitstorte Flach"
+                    label="Hochzeitstorte (flach) zum selber bestücken mit 5 Sorten Früchten"
                   />
                 </FormGroup>
               </Box>
@@ -707,7 +707,7 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                         onChange={(e) => setEditedEvent(prev => ({ ...prev, standardDekoration: e.target.checked }))}
                       />
                     }
-                    label="Standard Dekoration"
+                    label="Standard Dekoration Saal sowie Tischdekoration"
                   />
                   <FormControlLabel
                     control={
@@ -717,7 +717,7 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                         onChange={(e) => setEditedEvent(prev => ({ ...prev, serviceAllgemein: e.target.checked }))}
                       />
                     }
-                    label="Service Allgemein"
+                    label="Service im Allgemein"
                   />
                   <FormControlLabel
                     control={
@@ -729,12 +729,6 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                     }
                     label="Band & DJ"
                   />
-                </FormGroup>
-
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mb: 2, mt: 3 }}>
-                  Video & Fotografie
-                </Typography>
-                <FormGroup>
                   <FormControlLabel
                     control={
                       <Checkbox 
@@ -745,169 +739,178 @@ export default function EventDetail({ event, onSave, onDelete, mode }: EventDeta
                     }
                     label="3 x Video Kamera inkl. Kran HD (ohne Brautabholung)"
                   />
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.videoKameraKranHDMitBrautigam || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, videoKameraKranHDMitBrautigam: e.target.checked }))}
-                      />
-                    }
-                    label="3 x Video Kamera inkl. Kran HD im Saal (inkl. Bräutigamabholung) S 5.8"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.fotoshootingUSB || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, fotoshootingUSB: e.target.checked }))}
-                      />
-                    }
-                    label="Fotoshooting inkl. 35-40 Bilder auf USB Stick"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.weddingStoryClip || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, weddingStoryClip: e.target.checked }))}
-                      />
-                    }
-                    label="Wedding Story Clip"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.fotoalbum || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, fotoalbum: e.target.checked }))}
-                      />
-                    }
-                    label="Fotoalbum"
-                  />
                 </FormGroup>
 
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mb: 2, mt: 3 }}>
-                  Musik
-                </Typography>
-                <FormGroup>
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.davulZurna4Stunden || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, davulZurna4Stunden: e.target.checked }))}
-                      />
-                    }
-                    label="Davul & Zurna 4 Stunden"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.davulZurnaMitBrautabholung || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, davulZurnaMitBrautabholung: e.target.checked }))}
-                      />
-                    }
-                    label="Davul & Zurna mit Brautabholung"
-                  />
-                </FormGroup>
-              </Box>
-
-              <Box sx={{ flex: 1, minWidth: 350 }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
-                  Dekoration & Effekte
-                </Typography>
-                <FormGroup>
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.saeulenabgrenzungBlumenFeuerwerk || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, saeulenabgrenzungBlumenFeuerwerk: e.target.checked }))}
-                      />
-                    }
-                    label="Säulenabgrenzung mit Blumen & Feuerwerk"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.saeulenabgrenzungKuchenAnschneiden || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, saeulenabgrenzungKuchenAnschneiden: e.target.checked }))}
-                      />
-                    }
-                    label="Säulenabgrenzung mit Kuchen Anschneiden"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.eingangsfeuerwerkBrautpaar || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, eingangsfeuerwerkBrautpaar: e.target.checked }))}
-                      />
-                    }
-                    label="Eingangsfeuerwerk für Brautpaar"
-                  />
-                </FormGroup>
-
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mb: 2, mt: 3 }}>
-                  Extras
-                </Typography>
-                <FormGroup>
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.helikopterlandung || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, helikopterlandung: e.target.checked }))}
-                      />
-                    }
-                    label="Helikopterlandung"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.obstKuchenbuffetTatli || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, obstKuchenbuffetTatli: e.target.checked }))}
-                      />
-                    }
-                    label="Obst & Kuchenbuffet / Tatlı"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.cigkoefteTischservice || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, cigkoefteTischservice: e.target.checked }))}
-                      />
-                    }
-                    label="Çiğköfte Tischservice"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.suppeHauptgang || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, suppeHauptgang: e.target.checked }))}
-                      />
-                    }
-                    label="Suppe & Hauptgang"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox 
-                        checked={editedEvent.cocktailEmpfang || false} 
-                        disabled={!isEditing}
-                        onChange={(e) => setEditedEvent(prev => ({ ...prev, cocktailEmpfang: e.target.checked }))}
-                      />
-                    }
-                    label="Cocktail Empfang"
-                  />
-                </FormGroup>
               </Box>
             </Box>
+          </Box>
+
+          {/* Zusatzleistungen - Genau wie in EventForm.tsx strukturiert */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 4, fontWeight: 'bold', borderBottom: '2px solid #1976d2', pb: 1 }}>
+            Zusatzleistungen
+          </Typography>
+          
+          <Box sx={{ 
+            p: 3, 
+            backgroundColor: 'background.paper',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            mb: 4
+          }}>
+            <FormGroup sx={{ gap: 2 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={(editedEvent as any).videoKameraKranHDMit || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, videoKameraKranHDMit: e.target.checked } as any))}
+                  />
+                }
+                label="3 x Video Kamera inkl. Kran HD im Saal (inkl. Brautabholung) F 6.8"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.videoKameraKranHDMitBrautigam || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, videoKameraKranHDMitBrautigam: e.target.checked }))}
+                  />
+                }
+                label="3 x Video Kamera inkl. Kran HD im Saal (inkl. Bräutigamabholung) S 5.8"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.fotoshootingUSB || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, fotoshootingUSB: e.target.checked }))}
+                  />
+                }
+                label="Fotoshooting inkl. 35-40 Bilder auf USB Stick K 5.5"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.weddingStoryClip || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, weddingStoryClip: e.target.checked }))}
+                  />
+                }
+                label="Wedding Story (Clip) aus Brautabholung, Fotoshooting, 1. Tanz H 6.5"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.fotoalbum || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, fotoalbum: e.target.checked }))}
+                  />
+                }
+                label="Fotoalbum mit ca. 35 hochwertig gedruckte Bilder B 6.0"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.davulZurna4Stunden || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, davulZurna4Stunden: e.target.checked }))}
+                  />
+                }
+                label="1x Davul & Zurna (4-5 Stunden nur im Saal) A 7.5"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.davulZurnaMitBrautabholung || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, davulZurnaMitBrautabholung: e.target.checked }))}
+                  />
+                }
+                label="1x Davul & Zurna (inkl. Brautabholung und 4-5 Stunden im Saal) L 8.5"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.saeulenabgrenzungBlumenFeuerwerk || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, saeulenabgrenzungBlumenFeuerwerk: e.target.checked }))}
+                  />
+                }
+                label="Säulenabgrenzung mit Blumen, Feuerwerk, Bodennebel und Hochzeitslaser 4-6 Stk. (für den 1. Tanz) M 5.0"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.saeulenabgrenzungKuchenAnschneiden || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, saeulenabgrenzungKuchenAnschneiden: e.target.checked }))}
+                  />
+                }
+                label="Säulenabgrenzung mit Blumen, Feuerwerk, Bodennebel (4-6 Stk.) beim Kuchen Anschneiden W 4.0"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.eingangsfeuerwerkBrautpaar || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, eingangsfeuerwerkBrautpaar: e.target.checked }))}
+                  />
+                }
+                label="Eingangsfeuerwerk für Brautpaar (8-10 Stk.) beim Betreten vom Saal D 5.0 (Nur in den Wintermonaten und bei Dunkelheit möglich)"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.helikopterlandung || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, helikopterlandung: e.target.checked }))}
+                  />
+                }
+                label="Landung mit dem Helikopter auf dem Parkplatz des Eventzentrums F 28.0"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.obstKuchenbuffetTatli || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, obstKuchenbuffetTatli: e.target.checked }))}
+                  />
+                }
+                label="Obst und Küchenbuffet inkl. Tatli als offenes Buffet nach dem Essen RK 0,20"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.cigkoefteTischservice || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, cigkoefteTischservice: e.target.checked }))}
+                  />
+                }
+                label="Cigköfte als Tischservice inkl. Blattsalat, Soße und Zitrone SR 0,20"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.suppeHauptgang || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, suppeHauptgang: e.target.checked }))}
+                  />
+                }
+                label="Suppe vor dem Hauptgang als Tischservice Mercimek, Yayla, Broccoli LA 0,27"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={editedEvent.cocktailEmpfang || false} 
+                    disabled={!isEditing}
+                    onChange={(e) => setEditedEvent(prev => ({ ...prev, cocktailEmpfang: e.target.checked }))}
+                  />
+                }
+                label="Cocktail Empfang (Alkoholfrei ca. 2 Stunden am Haupteingang durch Kellner) TU 0,18"
+              />
+            </FormGroup>
           </Box>
 
           {/* Unterschrift */}
